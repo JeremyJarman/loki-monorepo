@@ -1,0 +1,224 @@
+{
+  "cuisine": [
+    "italian",
+    "french",
+    "spanish",
+    "portuguese",
+    "greek",
+    "mediterranean",
+    "austrian",
+    "german",
+    "swiss",
+    "british",
+    "irish",
+    "scandinavian",
+    "eastern_european",
+    "balkan",
+
+    "japanese",
+    "chinese",
+    "korean",
+    "thai",
+    "vietnamese",
+    "indian",
+    "nepali",
+    "sri_lankan",
+    "malaysian",
+    "indonesian",
+    "filipino",
+
+    "middle_eastern",
+    "lebanese",
+    "israeli",
+    "persian",
+    "moroccan",
+    "ethiopian",
+    "north_african",
+    "west_african",
+
+    "american",
+    "southern_us",
+    "mexican",
+    "tex_mex",
+    "peruvian",
+    "brazilian",
+    "argentinian",
+    "caribbean",
+    "cuban",
+
+    "international"
+  ],
+
+    "specialties": [
+      "pizza",
+      "neapolitan_pizza",
+      "fresh_pasta",
+      "ramen",
+      "sushi",
+      "izakaya",
+      "tapas",
+      "small_plates",
+      "sharing_plates",
+  
+      "burgers",
+      "fried_chicken",
+      "tacos",
+      "dumplings",
+      "noodles",
+      "bowls",
+      "sandwiches",
+      "deli",
+  
+      "natural_wine",
+      "wine_bar",
+      "craft_beer",
+      "cocktails",
+      "signature_cocktails",
+  
+      "coffee",
+      "specialty_coffee",
+      "brunch",
+      "breakfast",
+      "pastries",
+      "desserts",
+      "baked_goods",
+  
+      "grill",
+      "bbq_meats",
+      "seafood_specialty",
+      "steaks",
+  
+      "street_food",
+      "comfort_food",
+      "tasting_menu",
+      "fine_dining",
+      "late_night_food",
+      "healthy_food"
+    ],
+
+    "service_access": [
+      "dine_in",
+      "takeaway",
+      "delivery",
+      "table_service",
+      "outdoor_seating",
+      "reservations_accepted",
+      "reservations_required",
+      "walk_ins_welcome",
+      "ticketed_entry"
+    ],
+  
+    "food_drink": [
+      "food",
+      "bar_food",
+      "small_plates",
+      "desserts",
+      "brunch",
+      "late_night_food",
+  
+      "alcohol",
+      "beer",
+      "craft_beer",
+      "wine",
+      "cocktails",
+      "spirits",
+      "coffee",
+      "tea",
+      "non_alcoholic"
+    ],
+  
+    "dietary_options": [
+      "vegetarian_options",
+      "vegan_options",
+      "halal_options",
+      "gluten_free_options",
+      "organic_options"
+    ],
+  
+    "highlights_experiences": [
+      "great_cocktails",
+      "great_beer_selection",
+      "live_music",
+      "dj",
+      "live_performances",
+      "quiz_night",
+      "open_mic",
+      "comedy_night",
+      "sports_screenings",
+      "bar_games",
+      "dancing",
+      "dance_floor"
+    ],
+  
+    "space_amenities": [
+      "outdoor_seating",
+      "rooftop",
+      "fireplace",
+      "private_dining",
+      "air_conditioning",
+      "heating",
+      "cloakroom",
+      "charging_outlets",
+      "high_chairs",
+      "luggage_storage"
+    ],
+  
+    "accessibility": [
+      "wheelchair_accessible",
+      "wheelchair_accessible_toilet",
+      "step_free_access"
+    ],
+  
+    "connectivity_utilities": [
+      "wifi",
+      "free_wifi",
+      "paid_wifi",
+      "free_water_refills"
+    ],
+  
+    "atmosphere": [
+      "cosy",
+      "casual",
+      "trendy",
+      "romantic",
+      "lively",
+      "quiet",
+      "intimate",
+      "upscale",
+      "industrial",
+      "vintage",
+      "modern"
+    ],
+  
+    "crowd_inclusivity": [
+      "groups",
+      "solo_friendly",
+      "families",
+      "tourists",
+      "locals",
+      "students",
+      "business_crowd",
+      "lgbtq_friendly",
+      "inclusive_safe_space"
+    ],
+  
+    "events_timing": [
+      "happy_hour_drinks",
+      "happy_hour_food",
+      "live_events",
+      "recurring_events",
+      "late_opening",
+      "early_opening"
+    ],
+  
+    "payments": [
+      "cash_accepted",
+      "cash_only",
+      "credit_cards",
+      "debit_cards",
+      "nfc_payments",
+      "online_payments",
+      "split_bills"
+    ]
+  }
+  

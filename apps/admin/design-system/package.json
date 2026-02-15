@@ -1,0 +1,14 @@
+{
+  "name": "@loki/design-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Platform-agnostic design tokens for LOKI (web + Flutter). Generates Tailwind theme and Dart constants.",
+  "scripts": {
+    "build": "tsx scripts/build-tokens.ts",
+    "build:tokens": "tsx scripts/build-tokens.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.0.0"
+  }
+}

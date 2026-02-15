@@ -1,0 +1,14 @@
+name: loki_design_system
+description: LOKI design tokens for Flutter (colors, spacing, typography). Generated from apps/admin/design-system tokens.
+publish_to: none
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  # No assets; tokens only. Use google_fonts in the app for Crimson Text, DM Sans, Roboto Mono.
+  uses-material-design: true

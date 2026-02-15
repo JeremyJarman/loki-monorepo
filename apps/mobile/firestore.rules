@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Signup: anyone can read handles to check availability; only authenticated users can create (reserve) a handle
+    match /handles/{handleId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
+    // Landing waitlist: anyone can add (create only); no read/update/delete from client
+    match /mailingList/{docId} {
+      allow create: if request.resource.data.keys().hasOnly(['email', 'source', 'createdAt'])
+                    && request.resource.data.email is string
+                    && request.resource.data.source in ['hero', 'cta'];
+      allow read, update, delete: if false;
+    }
+
+    // DEVELOPMENT RULES - Allows all access
+    // ⚠️ WARNING: These rules allow anyone to read/write your database
+    // Only use for development/testing!
+    
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

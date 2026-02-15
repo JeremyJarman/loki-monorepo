@@ -1,0 +1,12 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // DEVELOPMENT RULES - Allows all access
+    // ⚠️ WARNING: These rules allow anyone to read/write your storage
+    // Only use for development/testing!
+    
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}

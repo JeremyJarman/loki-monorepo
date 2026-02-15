@@ -1,0 +1,120 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Search, Info, List, Share2, ArrowRight } from 'lucide-react';
+
+export const HowItWorks: React.FC = () => {
+  const steps = [
+    {
+      number: '01',
+      icon: Search,
+      title: 'Browse Specials',
+      description: 'Browse hundred of specials by category, price, or keyword',
+    },
+    {
+      number: '02',
+      icon: Info,
+      title: 'Dig Deeper',
+      description: 'Check out pictures of the venue and their menu offerings',
+    },
+    {
+      number: '03',
+      icon: List,
+      title: 'Create Lists',
+      description: 'Like something? Add it to your own lists, or collaborate on shared lists',
+    },
+    {
+      number: '04',
+      icon: Share2,
+      title: 'Share with Friends',
+      description: 'Collaborate on lists, react, comment and make plans together',
+    },
+  ];
+
+  return (
+    <section id="how-it-works" className="py-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5">
+      <div className="container mx-auto max-w-6xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <h2 className="mb-4 font-normal">How It Works</h2>
+          <p className="text-xl max-w-3xl mx-auto">
+            We want to make planning a night out a breeze. Here's how you can get started.
+          </p>
+        </motion.div>
+
+        {/* Visual showcase blocks */}
+        {[
+          {
+            title: 'Browse hundreds of specials',
+            description:
+              "Discover what's happening around you. Swipe through curated specials from your favorite venues — happy hours, events, and limited-time offers, all in one place.",
+            image: '/specialcards.png',
+            imageFirst: true,
+          },
+          {
+            title: 'Discuss and plan together',
+            description:
+              "Share venues and specials with friends, react to ideas, and make decisions as a group. No more screenshots or links in group chats — plan your night together in one thread.",
+            image: '/discussion.png',
+            imageFirst: false,
+          },
+        ].map((block, index) => (
+          <motion.div
+            key={block.title}
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: index * 0.1 }}
+            className={`flex flex-col gap-8 md:gap-12 items-center mb-16 ${
+              block.imageFirst ? 'md:flex-row' : 'md:flex-row-reverse'
+            }`}
+          >
+            <div className="flex-1 w-full">
+              <img src={block.image} alt={block.title} className="w-full object-cover" />
+            </div>
+            <div className="flex-1 flex flex-col justify-center">
+              <h3 className="text-2xl md:text-3xl font-normal mb-4">{block.title}</h3>
+              <p className="text-lg text-neutral-600">{block.description}</p>
+            </div>
+          </motion.div>
+        ))}
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mt-16">
+          {steps.map((step, index) => (
+            <motion.div
+              key={step.number}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: index * 0.1 }}
+              className="relative"
+            >
+              <div className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow h-full">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <step.icon className="text-primary" size={32} />
+                  </div>
+                  <span className="text-4xl font-heading font-bold text-primary/20">
+                    {step.number}
+                  </span>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
+                <p>{step.description}</p>
+              </div>
+              
+              {index < steps.length - 1 && (
+                <div className="hidden lg:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10">
+                  <ArrowRight className="text-primary/30" size={24} />
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};

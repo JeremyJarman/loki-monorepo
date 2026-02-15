@@ -1,0 +1,3 @@
+node_modules/
+# Uncomment to avoid committing generated output; consumers then run npm run build
+# build/

@@ -1,0 +1,19 @@
+{
+  "name": "loki-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:admin": "npm run dev -w apps/admin",
+    "dev:admin:here": "cd apps/admin && npm run dev",
+    "dev:frontend": "npm run dev -w apps/frontend",
+    "dev:frontend:network": "npm run dev:network -w apps/frontend",
+    "dev:landing": "npm run dev -w apps/landing",
+    "build:admin": "npm run build -w apps/admin",
+    "build:frontend": "npm run build -w apps/frontend",
+    "build:landing": "npm run build -w apps/landing",
+    "build:tokens": "cd apps/admin/design-system && npm run build"
+  }
+}

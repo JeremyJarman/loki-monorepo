@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* Design System Colors */
+@theme {
+  /* Primary Colors - Deep Forest Green */
+  --color-primary: #122220;
+  --color-primary-dark: #0E1A18;
+  --color-primary-light: #1A2E2C;
+  
+  /* Secondary Colors - Vibrant Orange */
+  --color-secondary: #FF3D00;
+  --color-secondary-dark: #CC2F00;
+  --color-secondary-light: #FF6B33;
+  
+  /* Accent Colors - Olive Green */
+  --color-accent: #485C11;
+  --color-accent-dark: #3A4A0E;
+  --color-accent-light: #5A6E15;
+  
+  /* Neutral Colors */
+  --color-neutral-light: #F5F5F5;
+  --color-neutral: #333333;
+  --color-neutral-dark: #1F1F1F;
+  --color-text-paragraph: #6F6F6F;
+  
+  /* Background */
+  --color-background: #ffffff;
+  --color-foreground: #000000;
+  
+  /* Font Families */
+  --font-heading: 'Crimson Text', serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #000000;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: #000000;
+}
+
+p {
+  font-family: var(--font-body);
+  color: var(--color-text-paragraph);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
