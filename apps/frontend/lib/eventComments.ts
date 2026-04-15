@@ -1,7 +1,7 @@
 import {
   collection,
   doc,
-  addDoc,
+  setDoc,
   getDocs,
   getDoc,
   deleteDoc,
@@ -10,7 +10,6 @@ import {
   where,
   getCountFromServer,
   serverTimestamp,
-  updateDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { EventInstanceCommentDoc, UserRef } from '@loki/shared';
@@ -63,8 +62,9 @@ export async function addEventInstanceComment(
   const trimmed = text.trim();
   if (!trimmed) throw new Error('Comment text is required');
   const commentsRef = collection(db, COLLECTION_EXPERIENCE_INSTANCES, instanceId, SUBCOLLECTION_COMMENTS);
-  const commentRef = await addDoc(commentsRef, {
-    commentId: '',
+  const commentRef = doc(commentsRef);
+  await setDoc(commentRef, {
+    commentId: commentRef.id,
     instanceId,
     text: trimmed,
     author: {
@@ -76,7 +76,6 @@ export async function addEventInstanceComment(
     updatedAt: serverTimestamp(),
     isDeleted: false,
   });
-  await updateDoc(commentRef, { commentId: commentRef.id });
   return commentRef.id;
 }
 

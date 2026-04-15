@@ -6,6 +6,7 @@ declare global {
   interface Window {
     google?: {
       maps: {
+        event?: { clearInstanceListeners: (instance: unknown) => void };
         places: {
           Autocomplete: new (
             input: HTMLInputElement,
@@ -87,7 +88,15 @@ export function PlaceAutocompleteInput({
     autocompleteRef.current = autocomplete;
 
     const listener = () => {
-      const place = (autocomplete as { getPlace: () => { name?: string; formatted_address?: string; geometry?: { location?: { lat: () => number; lng: () => number } } } }).getPlace();
+      const place = (
+        autocomplete as unknown as {
+          getPlace: () => {
+            name?: string;
+            formatted_address?: string;
+            geometry?: { location?: { lat: () => number; lng: () => number } };
+          };
+        }
+      ).getPlace();
       if (place.formatted_address) {
         onChange(place.formatted_address, {
           name: place.name || place.formatted_address,
@@ -101,7 +110,7 @@ export function PlaceAutocompleteInput({
     autocomplete.addListener('place_changed', listener);
     return () => {
       if (window.google?.maps?.event && autocompleteRef.current) {
-        window.google.maps.event.clearInstanceListeners(autocompleteRef.current as google.maps.places.Autocomplete);
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
     };
   }, [scriptLoaded, onChange]);

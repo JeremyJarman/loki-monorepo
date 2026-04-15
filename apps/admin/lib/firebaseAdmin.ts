@@ -8,6 +8,12 @@ let defaultApp: admin.app.App | null = null;
  */
 function getAdminApp(): admin.app.App {
   if (defaultApp) return defaultApp;
+  // Namespaced SDK exposes `apps` (not getApps); webpack interop breaks on getApps().
+  const existingApps = admin.apps;
+  if (existingApps.length > 0) {
+    defaultApp = existingApps[0]!;
+    return defaultApp;
+  }
   let key = process.env.FIREBASE_SERVICE_ACCOUNT_KEY ?? '';
   key = key.trim();
   if (!key) {

@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 
 export const USERS_COLLECTION = 'users';
 
@@ -12,6 +12,8 @@ export type UserRole = (typeof ALL_ROLES)[number];
 export type UserRecord = {
   uid: string;
   email?: string;
+  /** URL-safe @username (same field as profile settings). */
+  username?: string;
   displayName?: string;
   role?: string;
   updatedAt?: unknown;
@@ -99,4 +101,23 @@ export async function setUserEmail(uid: string, email: string): Promise<void> {
     { email, updatedAt: serverTimestamp() },
     { merge: true }
   );
+}
+
+/**
+ * Delete a user (Auth + Firestore users/{uid} subtree + handles doc if owned). Server-side via Admin SDK.
+ * Caller must be signed in as admin or superadmin.
+ */
+export async function deleteUserViaAdminApi(targetUid: string): Promise<void> {
+  const current = auth.currentUser;
+  if (!current) throw new Error('Not signed in');
+  const idToken = await current.getIdToken();
+  const res = await fetch('/api/users/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken, targetUid }),
+  });
+  const data = (await res.json()) as { ok?: boolean; error?: string };
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error ?? (res.statusText || 'Delete failed'));
+  }
 }

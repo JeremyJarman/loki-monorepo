@@ -50,19 +50,21 @@ export function EventCommentsBottomSheet({
   const onCountRef = useRef(onVisibleCommentCountChange);
   onCountRef.current = onVisibleCommentCountChange;
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!instanceId) return;
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     try {
       const next = await getEventInstanceComments(instanceId);
       setComments(next);
       onCountRef.current?.(next.filter((c) => !c.isDeleted).length);
     } catch (e) {
       console.error('Failed to load event comments', e);
-      setComments([]);
-      onCountRef.current?.(0);
+      if (!opts?.silent) {
+        setComments([]);
+        onCountRef.current?.(0);
+      }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [instanceId]);
 
@@ -91,12 +93,12 @@ export function EventCommentsBottomSheet({
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || !authorRef) return;
+    if (!text || !authorRef || sending) return;
     setSending(true);
     try {
       await addEventInstanceComment(instanceId, authorRef, text);
       setInput('');
-      await load();
+      await load({ silent: true });
     } catch (e) {
       console.error('Failed to add comment', e);
     } finally {
@@ -109,7 +111,7 @@ export function EventCommentsBottomSheet({
     setDeletingId(commentId);
     try {
       await deleteEventInstanceComment(instanceId, commentId, currentUserId);
-      await load();
+      await load({ silent: true });
     } catch (e) {
       console.error('Failed to delete comment', e);
     } finally {
@@ -200,9 +202,14 @@ export function EventCommentsBottomSheet({
                 type="text"
                 placeholder="Write a comment…"
                 value={input}
+                disabled={sending}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && void handleSend()}
-                className="min-w-0 flex-1 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100"
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' || sending) return;
+                  e.preventDefault();
+                  void handleSend();
+                }}
+                className="min-w-0 flex-1 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 disabled:opacity-60"
               />
               <button
                 type="button"
