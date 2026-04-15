@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback, type MouseEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, type MouseEvent as ReactMouseEvent } from 'react';
 import Link from 'next/link';
 import { Bookmark, Share2, MapPin, Calendar, Music2, Star, CheckCircle2, ChevronDown, X, Check, ExternalLink, MessageCircle } from 'lucide-react';
 import type { UserRef } from '@loki/shared';
@@ -165,7 +165,7 @@ export function EventCard({
 
   useEffect(() => {
     if (!attendanceMenuOpen) return;
-    const close = (e: MouseEvent) => {
+    const close = (e: Event) => {
       if (attendanceMenuRef.current && !attendanceMenuRef.current.contains(e.target as Node)) {
         setAttendanceMenuOpen(false);
       }
@@ -209,7 +209,7 @@ export function EventCard({
   }, [item.instanceId, item.artistId]);
 
   const handleShareClick = useCallback(
-    async (e: MouseEvent<HTMLButtonElement>) => {
+    async (e: ReactMouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       e.stopPropagation();
       const url = buildPublicEventUrl();

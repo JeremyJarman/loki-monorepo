@@ -14,6 +14,7 @@ import {
   where,
   serverTimestamp,
   Timestamp,
+  type DocumentData,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from './firebase';
@@ -131,7 +132,7 @@ export async function updateArtistProfile(
     payload.descriptors = descriptors.length > 0 ? descriptors : null;
   }
 
-  await updateDoc(doc(db, COLLECTION_ARTISTS, artistId), payload);
+  await updateDoc(doc(db, COLLECTION_ARTISTS, artistId), payload as DocumentData);
 }
 
 /**

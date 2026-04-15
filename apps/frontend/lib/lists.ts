@@ -19,6 +19,7 @@ import {
   serverTimestamp,
   increment,
   Timestamp,
+  type DocumentData,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type {
@@ -817,7 +818,7 @@ export async function addReaction(
     updates['stats.reactionsCount'] = increment(1);
   }
   updates[`stats.reactionTypes.${emoji}`] = increment(1);
-  await updateDoc(itemRef, updates);
+  await updateDoc(itemRef, updates as DocumentData);
 
   await addDoc(activityRef, {
     activityId: '',
