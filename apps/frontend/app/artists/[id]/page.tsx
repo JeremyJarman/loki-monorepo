@@ -119,27 +119,34 @@ export default function ArtistProfilePage() {
       }
 
       if (artistData?.userId) {
-        const [profile, followers, following, listsData] = await Promise.all([
-          getUserProfile(artistData.userId),
-          getFollowersCount(artistData.userId),
-          getFollowingCount(artistData.userId),
-          getListsOwnedByUserForProfileView(artistData.userId, currentUser?.uid ?? null),
-        ]);
-        setUserProfile(
-          profile
-            ? {
-                displayName: profile.displayName,
-                about: profile.about,
-                instagramUrl: profile.instagramUrl,
-                websiteUrl: profile.websiteUrl,
-                username: profile.username,
-                profileImageUrl: profile.profileImageUrl ?? null,
-              }
-            : null
-        );
-        setFollowersCount(followers);
-        setFollowingCount(following);
-        setListsCount(listsData.length);
+        if (currentUser?.uid) {
+          const [profile, followers, following, listsData] = await Promise.all([
+            getUserProfile(artistData.userId),
+            getFollowersCount(artistData.userId),
+            getFollowingCount(artistData.userId),
+            getListsOwnedByUserForProfileView(artistData.userId, currentUser.uid),
+          ]);
+          setUserProfile(
+            profile
+              ? {
+                  displayName: profile.displayName,
+                  about: profile.about,
+                  instagramUrl: profile.instagramUrl,
+                  websiteUrl: profile.websiteUrl,
+                  username: profile.username,
+                  profileImageUrl: profile.profileImageUrl ?? null,
+                }
+              : null
+          );
+          setFollowersCount(followers);
+          setFollowingCount(following);
+          setListsCount(listsData.length);
+        } else {
+          setUserProfile(null);
+          setFollowersCount(0);
+          setFollowingCount(0);
+          setListsCount(0);
+        }
       } else {
         setUserProfile(null);
         setFollowersCount(0);
@@ -159,9 +166,12 @@ export default function ArtistProfilePage() {
   }, [loadArtistAndGigs]);
 
   const loadLists = useCallback(async () => {
-    if (!artist?.userId) return;
+    if (!artist?.userId || !currentUser?.uid) {
+      setLists([]);
+      return;
+    }
     try {
-      const listsData = await getListsOwnedByUserForProfileView(artist.userId, currentUser?.uid ?? null);
+      const listsData = await getListsOwnedByUserForProfileView(artist.userId, currentUser.uid);
       setLists(
         listsData.map((l) => ({
           id: l.id,

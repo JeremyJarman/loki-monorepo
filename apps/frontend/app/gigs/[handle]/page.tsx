@@ -53,10 +53,14 @@ export default function ArtistGigsPage({ params }: { params: Promise<{ handle: s
         let displayName = artistData.name || '—';
         let aboutSource = artistData.about || artistData.details;
         if (artistData.userId) {
-          const userProfile = await getUserProfile(artistData.userId);
-          if (userProfile) {
-            displayName = userProfile.displayName?.trim() || displayName;
-            aboutSource = userProfile.about?.trim() || aboutSource;
+          try {
+            const userProfile = await getUserProfile(artistData.userId);
+            if (userProfile) {
+              displayName = userProfile.displayName?.trim() || displayName;
+              aboutSource = userProfile.about?.trim() || aboutSource;
+            }
+          } catch {
+            /* Signed-out users cannot read users/{id}; use artist doc fields */
           }
         }
         const aboutShort = aboutSource

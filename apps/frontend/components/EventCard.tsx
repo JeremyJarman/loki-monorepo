@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { Bookmark, Share2, MapPin, Calendar, Music2, Star, CheckCircle2, ChevronDown, X, Check, ExternalLink, MessageCircle } from 'lucide-react';
 import type { UserRef } from '@loki/shared';
@@ -110,6 +110,7 @@ export function EventCard({
 }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState<number | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [isClamped, setIsClamped] = useState(false);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
@@ -196,6 +197,51 @@ export function EventCard({
 
   const artistNameClassName =
     'font-heading font-bold text-xl sm:text-2xl leading-tight tracking-tight !text-white min-w-0 flex-1 [text-shadow:0_1px_2px_rgba(0,0,0,0.65),0_2px_12px_rgba(0,0,0,0.45)] line-clamp-2';
+
+  const buildPublicEventUrl = useCallback(() => {
+    if (typeof window === 'undefined') return '';
+    const id = item.instanceId?.trim();
+    if (!id) return '';
+    const u = new URL(`/events/${id}`, window.location.origin);
+    const aid = item.artistId?.trim();
+    if (aid) u.searchParams.set('artistId', aid);
+    return u.toString();
+  }, [item.instanceId, item.artistId]);
+
+  const handleShareClick = useCallback(
+    async (e: MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const url = buildPublicEventUrl();
+      if (!url) return;
+      try {
+        if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+          try {
+            await navigator.share({
+              title: item.title,
+              text: item.artistName ? `${item.title} · ${item.artistName}` : item.title,
+              url,
+            });
+            return;
+          } catch (shareErr: unknown) {
+            if (shareErr instanceof Error && shareErr.name === 'AbortError') return;
+          }
+        }
+        await navigator.clipboard.writeText(url);
+        setShareCopied(true);
+        window.setTimeout(() => setShareCopied(false), 2000);
+      } catch {
+        setShareCopied(false);
+      }
+    },
+    [buildPublicEventUrl, item.title, item.artistName]
+  );
+
+  const shareButtonClass =
+    'p-1 sm:p-1.5 rounded shrink-0 transition-colors ' +
+    (shareCopied
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : 'text-neutral-500 dark:text-neutral-400 hover:text-primary');
 
   const cardContent = (
     <>
@@ -354,8 +400,17 @@ export function EventCard({
               >
                 <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
-              <button type="button" className="p-1 sm:p-1.5 rounded text-neutral-500 dark:text-neutral-400 hover:text-primary shrink-0" aria-label="Share">
-                <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              <button
+                type="button"
+                onClick={handleShareClick}
+                className={shareButtonClass}
+                aria-label={shareCopied ? 'Event link copied' : 'Copy link to this event'}
+              >
+                {shareCopied ? (
+                  <Check className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
+                ) : (
+                  <Share2 className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
+                )}
               </button>
             </div>
             <div
@@ -508,8 +563,17 @@ export function EventCard({
               >
                 <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
-              <button type="button" className="p-1 sm:p-1.5 rounded text-neutral-500 dark:text-neutral-400 hover:text-primary shrink-0" aria-label="Share">
-                <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              <button
+                type="button"
+                onClick={handleShareClick}
+                className={shareButtonClass}
+                aria-label={shareCopied ? 'Event link copied' : 'Copy link to this event'}
+              >
+                {shareCopied ? (
+                  <Check className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
+                ) : (
+                  <Share2 className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
+                )}
               </button>
             </div>
             <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0 min-w-0">

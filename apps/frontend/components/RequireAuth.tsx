@@ -9,7 +9,12 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const isPublicPage = pathname === '/login' || pathname === '/signup' || pathname?.startsWith('/gigs/');
+  const isPublicPage =
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname?.startsWith('/gigs/') ||
+    pathname?.startsWith('/events/') ||
+    pathname?.startsWith('/artists/');
 
   useEffect(() => {
     if (loading) return;
