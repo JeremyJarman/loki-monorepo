@@ -84,26 +84,26 @@ export default function HomePage() {
         }}
       />
       <section>
-        <h1 className="font-heading font-bold text-2xl text-neutral mb-2">Activity</h1>
+        <h1 className="font-heading font-bold text-2xl text-neutral dark:text-neutral-200 mb-2">Activity</h1>
         <p className="font-body text-sm text-text-paragraph mb-6">
           Recent activity from your lists and friends will appear here.
         </p>
-        <div className="rounded-xl border border-neutral-light bg-white p-8 text-center">
+        <div className="rounded-xl border border-neutral-light dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8 text-center">
           <Sparkles className="w-12 h-12 text-primary/60 mx-auto mb-3" />
           <p className="font-body text-text-paragraph text-sm mb-4">
-            When friends add specials to shared lists or react to items, you&apos;ll see it here.
+            When friends add events to shared lists or react to items, you&apos;ll see it here.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link
               href="/discover"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-body text-sm font-semibold bg-primary text-white hover:bg-primary-dark transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-body text-sm font-semibold bg-primary text-on-primary hover:bg-primary-dark transition-colors"
             >
               <Compass className="w-4 h-4" />
-              Discover specials
+              Discover events
             </Link>
             <Link
-              href="/profile"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-body text-sm font-semibold border border-neutral-300 text-neutral hover:bg-neutral-50 transition-colors"
+              href="/lists"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-body text-sm font-semibold border border-neutral-300 dark:border-neutral-600 text-neutral dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
             >
               <List className="w-4 h-4" />
               My lists

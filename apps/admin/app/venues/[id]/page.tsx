@@ -2135,6 +2135,7 @@ You MUST respond with a valid JSON object containing exactly these fields:
                           type="event"
                           currency={formData.currency}
                           openingHours={openingHours}
+                          instancePrefill={experienceInstances.filter((i) => i.experienceId === experience.id)}
                           isActive={isDuplicateMode ? undefined : getExperienceStatus(experience.id)}
                           onToggleStatus={isDuplicateMode ? undefined : handleToggleExperienceStatus}
                           onDelete={isDuplicateMode ? undefined : handleDeleteExperience}
@@ -2337,6 +2338,7 @@ You MUST respond with a valid JSON object containing exactly these fields:
                           currency={formData.currency}
                           openingHours={openingHours}
                           foodGalleryUrls={existingFoodImages}
+                          instancePrefill={experienceInstances.filter((i) => i.experienceId === experience.id)}
                           isActive={isDuplicateModeSpecial ? undefined : getExperienceStatus(experience.id)}
                           onToggleStatus={isDuplicateModeSpecial ? undefined : handleToggleExperienceStatus}
                           onDelete={isDuplicateModeSpecial ? undefined : handleDeleteExperience}
@@ -3151,8 +3153,17 @@ You MUST respond with a valid JSON object containing exactly these fields:
   );
 }
 
+/** Firestore Timestamp → value for `<input type="datetime-local" />` (local timezone). */
+function timestampToDatetimeLocalValue(ts: Timestamp | undefined | null): string {
+  if (ts == null) return '';
+  const d = ts.toDate();
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 // Experience Form Component
-function ExperienceFormContent({ experience, venueId, type, currency = 'EUR', openingHours, isActive, onToggleStatus, onDelete, onSuccess, onCancel, foodGalleryUrls = [] }: { experience?: Experience; venueId: string; type: 'event' | 'special'; currency?: string; openingHours?: { monday: TimeRange[]; tuesday: TimeRange[]; wednesday: TimeRange[]; thursday: TimeRange[]; friday: TimeRange[]; saturday: TimeRange[]; sunday: TimeRange[] }; isActive?: boolean; onToggleStatus?: (experienceId: string, currentStatus: boolean, experienceType: 'event' | 'special') => void; onDelete?: (experienceId: string) => void; onSuccess: () => void; onCancel: () => void; foodGalleryUrls?: string[] }) {
+function ExperienceFormContent({ experience, venueId, type, currency = 'EUR', openingHours, isActive, onToggleStatus, onDelete, onSuccess, onCancel, foodGalleryUrls = [], instancePrefill }: { experience?: Experience; venueId: string; type: 'event' | 'special'; currency?: string; openingHours?: { monday: TimeRange[]; tuesday: TimeRange[]; wednesday: TimeRange[]; thursday: TimeRange[]; friday: TimeRange[]; saturday: TimeRange[]; sunday: TimeRange[] }; isActive?: boolean; onToggleStatus?: (experienceId: string, currentStatus: boolean, experienceType: 'event' | 'special') => void; onDelete?: (experienceId: string) => void; onSuccess: () => void; onCancel: () => void; foodGalleryUrls?: string[]; /** Upcoming instance docs for this experience; used to prefill start/end when editing a one-off event/special. */ instancePrefill?: ExperienceInstance[] }) {
   const [formData, setFormData] = useState({
     title: experience?.title || '',
     description: experience?.description || '',
@@ -3165,6 +3176,9 @@ function ExperienceFormContent({ experience, venueId, type, currency = 'EUR', op
     // For non-recurring: single instance date/time
     instanceStartAt: '',
     instanceEndAt: '',
+    bookingRequired: type === 'event' ? (experience?.bookingRequired ?? false) : false,
+    bookingLink:
+      type === 'event' && typeof experience?.bookingLink === 'string' ? experience.bookingLink : '',
   });
   const [selectedTags, setSelectedTags] = useState<string[]>(() => (experience?.tags || []).filter(t => t !== 'YRW2026'));
   const [otherTagInput, setOtherTagInput] = useState('');
@@ -3173,6 +3187,15 @@ function ExperienceFormContent({ experience, venueId, type, currency = 'EUR', op
   const [images, setImages] = useState<File[]>([]);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(experience?.imageUrl || null);
   const [loading, setLoading] = useState(false);
+
+  const instancePrefillKey = useMemo(
+    () =>
+      (instancePrefill ?? [])
+        .map((i) => `${i.id}:${i.startAt.toMillis()}:${i.endAt.toMillis()}`)
+        .sort()
+        .join('|'),
+    [instancePrefill]
+  );
 
   useEffect(() => {
     if (experience) {
@@ -3184,6 +3207,14 @@ function ExperienceFormContent({ experience, venueId, type, currency = 'EUR', op
       const endDate = experience.recurrenceRule?.endDate 
         ? new Date(experience.recurrenceRule.endDate.toMillis()).toISOString().split('T')[0] 
         : '';
+      const sortedPrefill = (instancePrefill ?? [])
+        .slice()
+        .sort((a, b) => a.startAt.toMillis() - b.startAt.toMillis());
+      const firstInst = sortedPrefill[0];
+      const instanceStartAt =
+        experience.isRecurring || !firstInst ? '' : timestampToDatetimeLocalValue(firstInst.startAt);
+      const instanceEndAt =
+        experience.isRecurring || !firstInst ? '' : timestampToDatetimeLocalValue(firstInst.endAt);
       setFormData({
         title: experience.title || '',
         description: experience.description || '',
@@ -3193,14 +3224,17 @@ function ExperienceFormContent({ experience, venueId, type, currency = 'EUR', op
         daySchedules: daySchedules,
         recurrenceStartDate: startDate,
         recurrenceEndDate: endDate,
-        instanceStartAt: '',
-        instanceEndAt: '',
+        instanceStartAt,
+        instanceEndAt,
+        bookingRequired: type === 'event' ? (experience.bookingRequired ?? false) : false,
+        bookingLink:
+          type === 'event' && typeof experience.bookingLink === 'string' ? experience.bookingLink : '',
       });
       const tags = experience.tags || [];
       setIsYrwSpecial(type === 'special' && tags.includes('YRW2026'));
       setSelectedTags(tags.filter(t => t !== 'YRW2026'));
     }
-  }, [experience, type]);
+  }, [experience, type, instancePrefillKey]);
 
   const toggleDay = (day: number) => {
     setFormData(prev => {
@@ -3307,6 +3341,15 @@ function ExperienceFormContent({ experience, venueId, type, currency = 'EUR', op
           return tags.length > 0 ? tags : null;
         })(),
         genre: (selectedTags.includes('Live Music') || selectedTags.includes('DJ Night')) && genre ? genre : null,
+        ...(type === 'event'
+          ? {
+              bookingRequired: !!formData.bookingRequired,
+              bookingLink: formData.bookingLink.trim() || null,
+            }
+          : {
+              bookingRequired: false,
+              bookingLink: null,
+            }),
         updatedAt: serverTimestamp(),
       };
 
@@ -3616,6 +3659,34 @@ function ExperienceFormContent({ experience, venueId, type, currency = 'EUR', op
             className="w-full px-4 py-3 border-2 border-neutral-light rounded-lg focus:outline-none focus:border-primary transition-colors font-body text-neutral"
           />
           <p className="mt-1 text-xs text-gray-500">Enter the music genre for this event</p>
+        </div>
+      )}
+
+      {type === 'event' && (
+        <div className="border-t pt-4 space-y-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.bookingRequired}
+              onChange={(e) => setFormData({ ...formData, bookingRequired: e.target.checked })}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Booking required</span>
+          </label>
+          <p className="text-xs text-gray-500 ml-7 -mt-1">Attendees must complete booking or RSVP outside LOKI.</p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Booking link</label>
+            <input
+              type="url"
+              value={formData.bookingLink}
+              onChange={(e) => setFormData({ ...formData, bookingLink: e.target.value })}
+              placeholder="https://…"
+              className="w-full px-4 py-3 border-2 border-neutral-light rounded-lg focus:outline-none focus:border-primary transition-colors font-body text-neutral"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Ticket or RSVP URL shown in the consumer app as &quot;Book or RSVP&quot;.
+            </p>
+          </div>
         </div>
       )}
 

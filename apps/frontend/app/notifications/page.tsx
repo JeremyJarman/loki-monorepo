@@ -52,7 +52,7 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-heading font-bold text-2xl text-neutral flex items-center gap-2">
+        <h1 className="font-heading font-bold text-2xl text-neutral dark:text-neutral-200 flex items-center gap-2">
           <Bell className="w-6 h-6 text-primary" />
           Notifications
         </h1>
@@ -65,15 +65,15 @@ export default function NotificationsPage() {
       ) : list.length === 0 ? (
         <p className="font-body text-text-paragraph">No notifications yet.</p>
       ) : (
-        <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-light bg-white overflow-hidden">
+        <ul className="divide-y divide-neutral-200 dark:divide-neutral-700 rounded-xl border border-neutral-light dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
           {list.map((n) => (
             <li key={n.id}>
               <button
                 type="button"
                 onClick={() => onClick(n)}
-                className={`block w-full text-left px-4 py-3 hover:bg-neutral-50 transition-colors ${!n.isRead ? 'bg-primary/5' : ''}`}
+                className={`block w-full text-left px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors ${!n.isRead ? 'bg-primary/5 dark:bg-primary/10' : ''}`}
               >
-                <p className="font-body text-neutral text-sm">{n.message}</p>
+                <p className="font-body text-neutral dark:text-neutral-200 text-sm">{n.message}</p>
                 <p className="text-xs text-text-paragraph mt-1">{formatTime(n.createdAt)}</p>
               </button>
             </li>

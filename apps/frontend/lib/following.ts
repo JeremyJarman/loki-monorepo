@@ -12,6 +12,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { getUsersByIds } from './userProfile';
 import { COLLECTION_USERS, SUBCOLLECTION_FOLLOWING, SUBCOLLECTION_FOLLOWERS } from '@loki/shared';
 import type { UserRef } from '@loki/shared';
 /** Lightweight user for "people I follow" list (e.g. add collaborator modal). */
@@ -104,4 +105,87 @@ export async function getFollowingSet(
     if (userIds.includes(d.id)) set.add(d.id);
   });
   return set;
+}
+
+/**
+ * Get the number of followers for a user.
+ */
+export async function getFollowersCount(userId: string): Promise<number> {
+  const ref = collection(db, COLLECTION_USERS, userId, SUBCOLLECTION_FOLLOWERS);
+  const snap = await getDocs(ref);
+  return snap.size;
+}
+
+/**
+ * Get the number of users a user follows.
+ */
+export async function getFollowingCount(userId: string): Promise<number> {
+  const ref = collection(db, COLLECTION_USERS, userId, SUBCOLLECTION_FOLLOWING);
+  const snap = await getDocs(ref);
+  return snap.size;
+}
+
+/** User summary for followers/following lists. */
+export type ProfileUserSummary = {
+  userId: string;
+  displayName: string;
+  username?: string | null;
+  profileImageUrl: string | null;
+  artistId?: string | null;
+};
+
+/**
+ * Get the list of users who follow this user (followers).
+ */
+export async function getFollowers(userId: string): Promise<ProfileUserSummary[]> {
+  const ref = collection(db, COLLECTION_USERS, userId, SUBCOLLECTION_FOLLOWERS);
+  const snap = await getDocs(ref);
+  const refs = snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      userId: d.id,
+      displayName: (data.displayName as string) || (data.username as string) || d.id,
+      profileImageUrl: (data.profileImageUrl as string) || null,
+    };
+  });
+  if (refs.length === 0) return [];
+  const profiles = await getUsersByIds(refs.map((r) => r.userId));
+  return refs.map((r) => {
+    const p = profiles.get(r.userId);
+    return {
+      userId: r.userId,
+      displayName: p?.displayName?.trim() || r.displayName,
+      username: p?.username ?? null,
+      profileImageUrl: (p?.profileImageUrl || r.profileImageUrl) ?? null,
+      artistId: p?.artistId ?? null,
+    };
+  });
+}
+
+/**
+ * Get the list of users this user follows (following).
+ */
+export async function getFollowing(userId: string): Promise<ProfileUserSummary[]> {
+  const ref = collection(db, COLLECTION_USERS, userId, SUBCOLLECTION_FOLLOWING);
+  const snap = await getDocs(ref);
+  const refs = snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      userId: d.id,
+      displayName: (data.displayName as string) || (data.username as string) || d.id,
+      profileImageUrl: (data.profileImageUrl as string) || null,
+    };
+  });
+  if (refs.length === 0) return [];
+  const profiles = await getUsersByIds(refs.map((r) => r.userId));
+  return refs.map((r) => {
+    const p = profiles.get(r.userId);
+    return {
+      userId: r.userId,
+      displayName: p?.displayName?.trim() || r.displayName,
+      username: p?.username ?? null,
+      profileImageUrl: (p?.profileImageUrl || r.profileImageUrl) ?? null,
+      artistId: p?.artistId ?? null,
+    };
+  });
 }

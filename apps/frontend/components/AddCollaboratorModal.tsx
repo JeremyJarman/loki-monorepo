@@ -162,7 +162,7 @@ export function AddCollaboratorModal({
                     type="button"
                     disabled={addingId === u.userId}
                     onClick={() => handleAdd(u)}
-                    className="px-4 py-2 rounded-lg font-body text-sm font-semibold bg-primary text-white hover:bg-primary-dark disabled:opacity-50"
+                    className="px-4 py-2 rounded-lg font-body text-sm font-semibold bg-primary text-on-primary hover:bg-primary-dark disabled:opacity-50"
                   >
                     {addingId === u.userId ? 'Adding…' : 'Add'}
                   </button>

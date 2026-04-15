@@ -109,13 +109,13 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading font-bold text-2xl text-neutral mb-2">People</h1>
+        <h1 className="font-heading font-bold text-2xl text-neutral dark:text-neutral-200 mb-2">People</h1>
         <p className="font-body text-sm text-text-paragraph mb-4">
           Find people to follow. Search by display name or username.
         </p>
       </div>
 
-      <div className="sticky top-0 z-10 bg-[#FDF8F6] py-2 -mx-1 px-1">
+      <div className="sticky top-[4.5rem] z-10 bg-white dark:bg-neutral-950 py-2 -mx-1 px-1">
         <label htmlFor="users-search" className="sr-only">
           Search by display name or username
         </label>
@@ -125,7 +125,7 @@ export default function UsersPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name or @username"
-          className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-white text-neutral-900 text-sm placeholder-neutral-400 font-body"
+          className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 text-sm placeholder-neutral-400 font-body"
         />
       </div>
 
@@ -136,13 +136,13 @@ export default function UsersPage() {
           {search.trim() ? 'No people match your search.' : 'No other users yet.'}
         </p>
       ) : (
-        <ul className="space-y-0 divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white overflow-hidden">
+        <ul className="space-y-0 divide-y divide-neutral-200 dark:divide-neutral-700 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
           {filteredUsers.map((u) => {
             const isFollowing = followingSet.has(u.userId);
             const loadingThis = followLoading === u.userId;
             return (
-              <li key={u.userId} className="flex items-center gap-4 p-4 hover:bg-neutral-50/50 transition-colors">
-                <Link href={`/profile/${u.userId}`} className="flex items-center gap-4 flex-1 min-w-0">
+              <li key={u.userId} className="flex items-center gap-4 p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+                <Link href={u.artistId ? `/artists/${u.artistId}` : `/profile/${u.userId}`} className="flex items-center gap-4 flex-1 min-w-0">
                   <div className="flex-shrink-0 w-14 h-14 rounded-full overflow-hidden bg-neutral-100">
                     {u.profileImageUrl ? (
                       <img
@@ -157,7 +157,7 @@ export default function UsersPage() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-heading font-semibold text-neutral truncate">
+                    <p className="font-heading font-semibold text-neutral dark:text-neutral-200 truncate">
                       {u.displayName || 'Someone'}
                     </p>
                     {u.username && (
@@ -172,8 +172,8 @@ export default function UsersPage() {
                     disabled={loadingThis}
                     className={
                       isFollowing
-                        ? 'px-4 py-2 rounded-xl font-body text-sm font-semibold border-2 border-neutral-300 text-neutral hover:bg-neutral-50 disabled:opacity-60'
-                        : 'px-4 py-2 rounded-xl font-body text-sm font-semibold bg-primary text-white hover:bg-primary-dark disabled:opacity-60'
+                        ? 'px-4 py-2 rounded-xl font-body text-sm font-semibold border-2 border-neutral-300 dark:border-neutral-600 text-neutral dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60'
+                        : 'px-4 py-2 rounded-xl font-body text-sm font-semibold bg-primary text-on-primary hover:bg-primary-dark disabled:opacity-60'
                     }
                   >
                     {loadingThis ? '…' : isFollowing ? 'Following' : 'Follow'}

@@ -78,7 +78,7 @@ function defaultMessage(
 export async function notifyListCollaborators(
   listId: string,
   actorUserId: string,
-  payload: Omit<NotificationPayload, 'listName'> & { listName?: string }
+  payload: Omit<NotificationPayload, 'listName' | 'message'> & { listName?: string; message?: string }
 ): Promise<void> {
   const listRef = doc(db, COLLECTION_LISTS, listId);
   const snap = await getDoc(listRef);
@@ -153,7 +153,7 @@ export async function markNotificationRead(userId: string, notificationId: strin
  */
 export function notificationTargetToHref(actionTarget: string): string {
   const [listId, itemId] = actionTarget.split('#');
-  if (!listId) return '/profile';
+  if (!listId) return '/lists';
   if (itemId) return `/lists/${listId}#${itemId}`;
   return `/lists/${listId}`;
 }

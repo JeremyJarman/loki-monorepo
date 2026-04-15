@@ -7,17 +7,17 @@ export const Problem: React.FC = () => {
     {
       icon: Instagram,
       title: 'Algorithm Burying',
-      description: 'Social algorithms decide what shows up. Even when you follow a venue, there’s only a small chance you’ll see their posts when it matters.',
+      description: 'Social algorithms decide what shows up. Even when you follow an artist or venue, there’s only a small chance you’ll see gig posts when it matters.',
     },
     {
       icon: MapPin,
       title: 'Fragmented Information',
-      description: 'The details you need are scattered everywhere. Finding the right place means jumping between apps, tabs, and screenshots.',
+      description: 'The details you need to make a decision are scattered. Finding the right place means jumping between apps, tabs, and screenshots.',
     },
     {
       icon: Users,
       title: 'No Central Hub',
-      description: 'There is no centralized place to discover AND share plans with friends, its often just group chats, screenshots and links.',
+      description: 'There is no centralized place to discover AND share plans with friends, it’s often just group chats, screenshots and links.',
     },
   ];
 
@@ -33,7 +33,7 @@ export const Problem: React.FC = () => {
         >
           <h2 className="mb-4 font-normal">The 'What Now?' Dilemma</h2>
           <p className="text-xl max-w-3xl mx-auto">
-            Every night, amazing events and specials are happening around you. But they're buried in feeds, scattered across different platforms, or a mission to find.
+            Every night, great events are happening around you, but they're either buried in feeds or scattered across different sites.
           </p>
         </motion.div>
 

@@ -11,18 +11,18 @@ export const Solution: React.FC = () => {
   //  },
     {
       icon: List,
-      title: 'Shareable Lists',
-      description: 'Save specials to your own lists, or collaborate on shared lists with friends and family',
+      title: 'Shareable lists',
+      description: 'Save shows to your own lists or build shared lists with friends, so nothing good gets lost in the group chat.',
     },
     {
       icon: Share2,
-      title: 'Social Interactions',
-      description: 'List collaborators can add specials, react to them and add comments, all in one place, making planning easier',
+      title: 'Plan together',
+      description: 'Comment on events, coordinate with your crew, and share links without a dozen screenshots.',
     },
     {
       icon: FileText,
-      title: 'Rich Venue Profiles',
-      description: 'Smart summaries covering public opinion, digital menus, upcoming events, specials and more',
+      title: 'Artist Profiles',
+      description: 'Rich profiles with photo galleries, social media links, plus see what the community is saying about upcoming and past shows.',
     },
   //  {
   //    icon: Eye,
@@ -43,9 +43,9 @@ export const Solution: React.FC = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="mb-4 font-normal">One Platform for Discovery & Social Planning</h2>
+          <h2 className="mb-4 font-normal">One place for discovery & planning</h2>
           <p className="text-xl max-w-3xl mx-auto">
-            LOKI brings everything together in one place.
+            Discovery Artist, DJ's and all thier local performances.
           </p>
         </motion.div>
 

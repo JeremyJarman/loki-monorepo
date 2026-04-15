@@ -27,7 +27,7 @@ export function SuggestedForYou({
   return (
     <section className="mb-8">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-heading font-bold text-2xl text-neutral">Suggested for you</h2>
+        <h2 className="font-heading font-bold text-2xl text-neutral dark:text-neutral-200">Suggested for you</h2>
         <Link
           href="/users"
           className="font-body text-sm font-semibold text-primary hover:underline"

@@ -7,6 +7,10 @@ interface MailchimpFormProps {
   placeholder?: string;
   /** Use "light" for forms on dark backgrounds (e.g. CTA section) */
   variant?: 'default' | 'light';
+  /** Show terms/privacy links below the form */
+  showTermsLinks?: boolean;
+  /** Stack all fields vertically (for dedicated signup page) */
+  stacked?: boolean;
 }
 
 /**
@@ -17,6 +21,8 @@ export const MailchimpForm: React.FC<MailchimpFormProps> = ({
   buttonText = 'Join Waitlist',
   placeholder = 'Enter your email',
   variant = 'default',
+  showTermsLinks = true,
+  stacked = false,
 }) => {
   const inputClasses =
     variant === 'light'
@@ -34,19 +40,53 @@ export const MailchimpForm: React.FC<MailchimpFormProps> = ({
       action={MAILCHIMP.formAction}
       method="post"
       target="_self"
-      className="flex flex-col sm:flex-row gap-3 max-w-md"
+      className="flex flex-col gap-3 max-w-md"
       noValidate
     >
-      <div className="flex-1">
-        <input
-          type="email"
-          name="EMAIL"
-          placeholder={placeholder}
-          required
-          aria-label="Email address"
-          className={inputClasses}
-        />
+      <input
+        type="text"
+        name={MAILCHIMP.mergeFields.firstName}
+        placeholder="First name (optional)"
+        aria-label="First name"
+        className={inputClasses}
+      />
+      <input
+        type="text"
+        name={MAILCHIMP.mergeFields.lastName}
+        placeholder="Surname (optional)"
+        aria-label="Surname"
+        className={inputClasses}
+      />
+      <div className={stacked ? 'flex flex-col gap-3' : 'flex flex-col sm:flex-row gap-3'}>
+        <div className={stacked ? 'w-full' : 'flex-1'}>
+          <input
+            type="email"
+            name="EMAIL"
+            placeholder={placeholder}
+            required
+            aria-label="Email address"
+            className={inputClasses}
+          />
+        </div>
+        <Button
+          type="submit"
+          variant={buttonVariant}
+          className={`whitespace-nowrap w-full sm:w-auto ${buttonClassName}`}
+        >
+          {buttonText}
+        </Button>
       </div>
+      <label className="flex items-start gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          name={MAILCHIMP.mergeFields.creator}
+          value="Artist or creator"
+          className="w-4 h-4 mt-0.5 rounded border-neutral-light text-primary focus:ring-primary flex-shrink-0"
+        />
+        <span className={`text-sm ${variant === 'light' ? 'text-white/90' : 'text-text-paragraph'}`}>
+          I’m an artist or creator — help shape LOKI with early access and feature input
+        </span>
+      </label>
       {/* Honeypot - Mailchimp requires this to prevent bot signups */}
       <div aria-hidden="true" style={{ position: 'absolute', left: '-5000px' }}>
         <input
@@ -58,13 +98,19 @@ export const MailchimpForm: React.FC<MailchimpFormProps> = ({
           defaultValue=""
         />
       </div>
-      <Button
-        type="submit"
-        variant={buttonVariant}
-        className={`whitespace-nowrap ${buttonClassName}`}
-      >
-        {buttonText}
-      </Button>
+      {showTermsLinks && (
+        <p className={`text-sm ${variant === 'light' ? 'text-white/70' : 'text-text-paragraph'}`}>
+          By signing up, you agree to our{' '}
+          <a href="/#privacy-policy" className="underline hover:opacity-80">
+            Privacy Policy
+          </a>{' '}
+          and{' '}
+          <a href="/#terms-of-service" className="underline hover:opacity-80">
+            Terms of Service
+          </a>
+          .
+        </p>
+      )}
     </form>
   );
 };

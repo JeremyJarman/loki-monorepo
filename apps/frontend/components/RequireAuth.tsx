@@ -9,14 +9,16 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const isPublicPage = pathname === '/login' || pathname === '/signup' || pathname?.startsWith('/gigs/');
+
   useEffect(() => {
     if (loading) return;
-    if (!user && pathname !== '/login' && pathname !== '/signup') {
+    if (!user && !isPublicPage) {
       router.replace('/login');
     }
-  }, [user, loading, pathname, router]);
+  }, [user, loading, pathname, router, isPublicPage]);
 
-  if (loading) {
+  if (loading && !isPublicPage) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <p className="font-body text-text-paragraph">Loading…</p>
@@ -24,7 +26,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user && pathname !== '/login' && pathname !== '/signup') {
+  if (!user && !isPublicPage) {
     return null;
   }
 

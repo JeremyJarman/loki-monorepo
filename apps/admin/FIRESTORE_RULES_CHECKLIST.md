@@ -25,15 +25,19 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if request.auth != null;
       match /following/{followingId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null;  // Any auth user can read (for profile following list)
+        allow create, delete: if request.auth != null && request.auth.uid == userId;
       }
       match /followers/{followerId} {
-        allow read: if request.auth != null;
+        allow read: if request.auth != null;  // Any auth user can read (for profile followers list)
         allow create, delete: if request.auth != null && request.auth.uid == followerId;
       }
       match /notifications/{notificationId} {
         allow read, update, delete: if request.auth != null && request.auth.uid == userId;
         allow create: if request.auth != null && request.resource.data.actorId == request.auth.uid;
+      }
+      match /saved_lists/{listId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
     match /venues/{venueId} {

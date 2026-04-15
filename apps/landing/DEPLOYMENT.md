@@ -13,7 +13,11 @@ cp .env.example .env.local
 
 **Hostinger:** Build locally with `.env.local` set, then upload the `dist` folder. Env vars are injected at build time.
 
-**Custom thank-you page:** In Mailchimp, go to Form builder → Confirmation thank you page → set "Instead of showing this thank you page, send subscribers to another URL" to your desired URL (e.g. `https://yoursite.com/#thank-you`).
+**Custom thank-you page:** In Mailchimp, go to Form builder → Confirmation thank you page → set "Instead of showing this thank you page, send subscribers to another URL" to:
+```
+https://yoursite.com/#thank-you
+```
+Replace `yoursite.com` with your domain. This shows the built-in thank-you page on the landing site.
 
 ---
 

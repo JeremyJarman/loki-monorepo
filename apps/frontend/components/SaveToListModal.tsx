@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getListsWhereUserIsCollaborator, addListItem, createList } from '@/lib/lists';
+import { Lock, LockOpen } from 'lucide-react';
+import { Timestamp } from 'firebase/firestore';
+import { getListsWhereUserIsCollaborator, addListItem, addEventListItem, createList } from '@/lib/lists';
 import { useAuth } from '@/components/AuthProvider';
 import { getUserProfile } from '@/lib/userProfile';
 import type { UserRef } from '@loki/shared';
 import type { ListMetadata, CollaboratorRef } from '@loki/shared';
 import type { SpecialsCardItem } from './SpecialsCard';
+import type { EventCardItem } from './EventCard';
 
 function formatCollaboratorLabel(
   list: ListMetadata & { id: string },
@@ -40,24 +43,26 @@ function formatListMeta(
 }
 
 const CURRENCY_SYMBOLS: Record<string, string> = { EUR: '€', USD: '$', GBP: '£', CZK: 'Kč', HUF: 'Ft' };
-function priceString(item: SpecialsCardItem): string {
+function priceString(item: SpecialsCardItem | EventCardItem): string {
   const sym = (CURRENCY_SYMBOLS[item.currency] || '€');
   if (item.cost != null && item.cost > 0) {
     const s = Number.isInteger(item.cost) ? `${sym}${item.cost}` : `${sym}${item.cost.toFixed(2)}`;
-    return item.costPerPerson ? `${s} pp` : s;
+    return 'costPerPerson' in item && item.costPerPerson ? `${s} pp` : s;
   }
-  return '';
+  return 'Free';
 }
 
 export interface SaveToListModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** The special to save (id = experienceId). */
-  special: SpecialsCardItem | null;
+  /** The special to save (legacy). */
+  special?: SpecialsCardItem | null;
+  /** The event to save (primary). */
+  event?: EventCardItem | null;
   onSaved?: () => void;
 }
 
-export function SaveToListModal({ isOpen, onClose, special, onSaved }: SaveToListModalProps) {
+export function SaveToListModal({ isOpen, onClose, special, event, onSaved }: SaveToListModalProps) {
   const { user } = useAuth();
   const [lists, setLists] = useState<(ListMetadata & { id: string })[]>([]);
   const [listsLoading, setListsLoading] = useState(false);
@@ -129,7 +134,8 @@ export function SaveToListModal({ isOpen, onClose, special, onSaved }: SaveToLis
   const displayLabel = profileDisplayName || profileUsername || user?.displayName || user?.email?.split('@')[0] || 'Someone';
 
   const handleSave = async () => {
-    if (!user?.uid || !special || selectedListIds.size === 0) return;
+    const itemToSave = event ?? special;
+    if (!user?.uid || !itemToSave || selectedListIds.size === 0) return;
     setSaving(true);
     setError(null);
     try {
@@ -138,22 +144,47 @@ export function SaveToListModal({ isOpen, onClose, special, onSaved }: SaveToLis
         displayName: displayLabel,
         profileImageUrl: profileImageUrl ?? undefined,
       };
-      const price = priceString(special);
-      const specialData = {
-        venueId: special.venueId,
-        venueName: special.venueName,
-        specialTitle: special.title,
-        price: price || undefined,
-        cost: special.cost ?? undefined,
-        costPerPerson: special.costPerPerson,
-        currency: special.currency,
-        availability: undefined,
-        imageUrl: special.imageUrl,
-        cuisine: undefined,
-      };
-      const results = await Promise.allSettled(
-        [...selectedListIds].map((listId) => addListItem(listId, special.id, addedBy, specialData))
-      );
+      let results: PromiseSettledResult<string>[];
+      if (event) {
+        const price = priceString(event);
+        const eventData = {
+          instanceId: event.instanceId,
+          experienceId: event.experienceId,
+          venueId: event.venueId,
+          venueName: event.venueName,
+          eventTitle: event.title,
+          artistName: event.artistName ?? undefined,
+          startAt: Timestamp.fromDate(event.startAt),
+          genre: event.genre ?? undefined,
+          price: price !== 'Free' ? price : undefined,
+          cost: event.cost ?? undefined,
+          currency: event.currency,
+          imageUrl: event.imageUrl,
+          capacityStatus: event.capacityStatus,
+          bookingRequired: event.bookingRequired,
+          bookingLink: event.bookingLink ?? undefined,
+        };
+        results = await Promise.allSettled(
+          [...selectedListIds].map((listId) => addEventListItem(listId, event.instanceId, event.experienceId, addedBy, eventData))
+        );
+      } else {
+        const price = priceString(special!);
+        const specialData = {
+          venueId: special!.venueId,
+          venueName: special!.venueName,
+          specialTitle: special!.title,
+          price: price || undefined,
+          cost: special!.cost ?? undefined,
+          costPerPerson: special!.costPerPerson,
+          currency: special!.currency,
+          availability: undefined,
+          imageUrl: special!.imageUrl,
+          cuisine: undefined,
+        };
+        results = await Promise.allSettled(
+          [...selectedListIds].map((listId) => addListItem(listId, special!.id, addedBy, specialData))
+        );
+      }
       const failed = results.filter((r) => r.status === 'rejected');
       if (failed.length > 0) {
         const firstError = (failed[0] as PromiseRejectedResult).reason;
@@ -235,8 +266,21 @@ export function SaveToListModal({ isOpen, onClose, special, onSaved }: SaveToLis
                       }}
                       className="mt-1 rounded border-neutral-300"
                     />
-                    <div className="min-w-0">
-                      <span className="font-heading font-bold text-[#000000] block">{list.name}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-heading font-bold text-[#000000] dark:text-neutral-100 min-w-0 truncate">{list.name}</span>
+                        {(list.isPublic ?? true) === false ? (
+                          <span className="inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-body bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400" title="Private">
+                            <Lock className="w-3 h-3" />
+                            Private
+                          </span>
+                        ) : (
+                          <span className="inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-body bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" title="Public">
+                            <LockOpen className="w-3 h-3" />
+                            Public
+                          </span>
+                        )}
+                      </div>
                       <p className="font-body text-xs text-text-paragraph mt-0.5">
                         {formatListMeta(list, user?.uid, collaboratorDisplayNames)}
                       </p>
@@ -268,7 +312,7 @@ export function SaveToListModal({ isOpen, onClose, special, onSaved }: SaveToLis
                   type="button"
                   onClick={handleCreateList}
                   disabled={creatingList || !newListName.trim()}
-                  className="px-3 py-1.5 rounded-lg font-body text-sm font-semibold bg-primary text-white disabled:opacity-60"
+                  className="px-3 py-1.5 rounded-lg font-body text-sm font-semibold bg-primary text-on-primary disabled:opacity-60"
                 >
                   {creatingList ? 'Creating…' : 'Create'}
                 </button>
@@ -296,7 +340,7 @@ export function SaveToListModal({ isOpen, onClose, special, onSaved }: SaveToLis
             type="button"
             onClick={handleSave}
             disabled={saving || selectedListIds.size === 0}
-            className="px-4 py-2 rounded-lg font-body text-sm font-semibold bg-primary text-white disabled:opacity-60"
+            className="px-4 py-2 rounded-lg font-body text-sm font-semibold bg-primary text-on-primary disabled:opacity-60"
           >
             {saving ? 'Saving…' : 'Save'}
           </button>

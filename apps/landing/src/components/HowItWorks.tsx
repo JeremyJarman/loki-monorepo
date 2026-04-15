@@ -1,32 +1,33 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Search, Info, List, Share2, ArrowRight } from 'lucide-react';
+import { Search, MessageCircle, Bookmark, UserPlus, ArrowRight } from 'lucide-react';
 
 export const HowItWorks: React.FC = () => {
   const steps = [
     {
       number: '01',
       icon: Search,
-      title: 'Browse Specials',
-      description: 'Browse hundred of specials by category, price, or keyword',
+      title: 'Browse events',
+      description: 'Browse events by genre, date, and cost. Filter until you find the right night out.',
     },
     {
       number: '02',
-      icon: Info,
-      title: 'Dig Deeper',
-      description: 'Check out pictures of the venue and their menu offerings',
+      icon: MessageCircle,
+      title: 'Dig deeper',
+      description:
+        'Check artist profiles and see what others are saying about the event before you buy a ticket or head out.',
     },
     {
       number: '03',
-      icon: List,
-      title: 'Create Lists',
-      description: 'Like something? Add it to your own lists, or collaborate on shared lists',
+      icon: Bookmark,
+      title: 'Save or RSVP',
+      description: 'Save it to a list for later, or let the artist know you’ll be coming.',
     },
     {
       number: '04',
-      icon: Share2,
-      title: 'Share with Friends',
-      description: 'Collaborate on lists, react, comment and make plans together',
+      icon: UserPlus,
+      title: 'Share with friends',
+      description: 'Tag friends or send them the event link so everyone’s on the same page.',
     },
   ];
 
@@ -42,24 +43,23 @@ export const HowItWorks: React.FC = () => {
         >
           <h2 className="mb-4 font-normal">How It Works</h2>
           <p className="text-xl max-w-3xl mx-auto">
-            We want to make planning a night out a breeze. Here's how you can get started.
+            LOKI is built for live music — from discovery to the door. Here’s how to get started.
           </p>
         </motion.div>
 
-        {/* Visual showcase blocks */}
         {[
           {
-            title: 'Browse hundreds of specials',
+            title: 'Browse upcomming shows',
             description:
-              "Discover what's happening around you. Swipe through curated specials from your favorite venues — happy hours, events, and limited-time offers, all in one place.",
-            image: '/specialcards.png',
+              'Explore by genre, date, and cost. Less scrolling through feeds, more time finding the gigs you actually want.',
+            image: '/eventcards.png',
             imageFirst: true,
           },
           {
-            title: 'Discuss and plan together',
+            title: 'Engage with the artist and the community',
             description:
-              "Share venues and specials with friends, react to ideas, and make decisions as a group. No more screenshots or links in group chats — plan your night together in one thread.",
-            image: '/discussion.png',
+              'Open artist profiles, read the event details, and see what others are saying or let the artist know you’ll will be coming.',
+            image: '/Comments.png',
             imageFirst: false,
           },
         ].map((block, index) => (
@@ -74,7 +74,11 @@ export const HowItWorks: React.FC = () => {
             }`}
           >
             <div className="flex-1 w-full">
-              <img src={block.image} alt={block.title} className="w-full object-cover" />
+              <img
+                src={block.image}
+                alt=""
+                className="w-full rounded-xl border border-neutral-light shadow-sm object-cover"
+              />
             </div>
             <div className="flex-1 flex flex-col justify-center">
               <h3 className="text-2xl md:text-3xl font-normal mb-4">{block.title}</h3>
@@ -105,7 +109,7 @@ export const HowItWorks: React.FC = () => {
                 <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
                 <p>{step.description}</p>
               </div>
-              
+
               {index < steps.length - 1 && (
                 <div className="hidden lg:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10">
                   <ArrowRight className="text-primary/30" size={24} />

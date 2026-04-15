@@ -17,6 +17,11 @@ export default {
           dark: '#CC2F00',
           light: '#FF6B33',
         },
+        magenta: {
+          DEFAULT: '#C026D3',
+          dark: '#A21CAF',
+          light: '#D946EF',
+        },
         accent: {
           DEFAULT: '#485C11',
           dark: '#3A4A0E',

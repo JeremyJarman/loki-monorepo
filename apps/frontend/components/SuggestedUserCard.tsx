@@ -22,19 +22,19 @@ export function SuggestedUserCard({
   onDismiss,
 }: SuggestedUserCardProps) {
   return (
-    <article className="relative flex-shrink-0 w-[200px] rounded-2xl border border-neutral-light bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+    <article className="relative flex-shrink-0 w-[200px] rounded-2xl border border-neutral-light dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 shadow-sm hover:shadow-md transition-shadow">
       {onDismiss && (
         <button
           type="button"
           onClick={() => onDismiss(user.userId)}
-          className="absolute top-3 right-3 p-1 rounded-full text-neutral hover:bg-neutral-light transition-colors"
+          className="absolute top-3 right-3 p-1 rounded-full text-neutral dark:text-neutral-300 hover:bg-neutral-light dark:hover:bg-neutral-700 transition-colors"
           aria-label="Dismiss suggestion"
         >
           <X className="w-4 h-4" />
         </button>
       )}
-      <Link href={`/profile/${user.userId}`} className="block text-center">
-        <div className="relative mx-auto w-28 h-28 rounded-full overflow-hidden bg-neutral-light mb-3">
+      <Link href={user.artistId ? `/artists/${user.artistId}` : `/profile/${user.userId}`} className="block text-center">
+          <div className="relative mx-auto w-28 h-28 rounded-full overflow-hidden bg-neutral-light dark:bg-neutral-700 mb-3">
           {user.profileImageUrl ? (
             <img
               src={user.profileImageUrl}
@@ -42,14 +42,14 @@ export function SuggestedUserCard({
               className="object-cover w-full h-full"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-3xl font-heading font-bold text-neutral">
+            <div className="w-full h-full flex items-center justify-center text-3xl font-heading font-bold text-neutral dark:text-neutral-400">
               {(user.displayName || user.userId).slice(0, 1).toUpperCase()}
             </div>
           )}
         </div>
         <div className="flex flex-col items-center gap-0.5 mb-1">
           <div className="flex items-center justify-center gap-1.5">
-            <span className="font-heading font-bold text-base text-neutral truncate max-w-[140px]">
+            <span className="font-heading font-bold text-base text-neutral dark:text-neutral-200 truncate max-w-[140px]">
               {user.displayName || 'Someone'}
             </span>
             {user.verified && (
@@ -72,7 +72,7 @@ export function SuggestedUserCard({
               {user.followedByAvatarUrls.slice(0, 3).map((url, i) => (
                 <div
                   key={i}
-                  className="w-5 h-5 rounded-full border-2 border-white overflow-hidden bg-neutral-light"
+                  className="w-5 h-5 rounded-full border-2 border-white dark:border-neutral-800 overflow-hidden bg-neutral-light dark:bg-neutral-700"
                 >
                   <img src={url} alt="" className="object-cover w-full h-full" />
                 </div>
@@ -94,8 +94,8 @@ export function SuggestedUserCard({
           }}
           className={
             isFollowing
-              ? 'w-full py-2.5 rounded-xl font-body text-sm font-semibold border-2 border-neutral-300 text-neutral hover:bg-neutral-50 transition-colors'
-              : 'w-full py-2.5 rounded-xl font-body text-sm font-semibold bg-primary text-white hover:bg-primary-dark transition-colors'
+              ? 'w-full py-2.5 rounded-xl font-body text-sm font-semibold border-2 border-neutral-300 dark:border-neutral-600 text-neutral dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'
+              : 'w-full py-2.5 rounded-xl font-body text-sm font-semibold bg-primary text-on-primary hover:bg-primary-dark transition-colors'
           }
         >
           {isFollowing ? 'Following' : 'Follow'}

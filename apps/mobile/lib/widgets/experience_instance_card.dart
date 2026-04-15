@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/experience_instance_model.dart';
 import '../models/experience_model.dart';
 import '../models/venue_model.dart';
@@ -199,6 +200,47 @@ class _ExperienceInstanceCardState extends State<ExperienceInstanceCard> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+
+                if (widget.instance.type == 'event' &&
+                    widget.experience != null &&
+                    (widget.experience!.bookingRequired ||
+                        (widget.experience!.bookingLink ?? '').trim().isNotEmpty)) ...[
+                  const SizedBox(height: 8),
+                  if (widget.experience!.bookingRequired)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        'Booking required',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.amber.shade900,
+                        ),
+                      ),
+                    ),
+                  if ((widget.experience!.bookingLink ?? '').trim().isNotEmpty)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          final uri = Uri.tryParse(widget.experience!.bookingLink!.trim());
+                          if (uri != null && await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        icon: const Icon(Icons.open_in_new, size: 18),
+                        label: const Text('Book or RSVP'),
+                      ),
+                    )
+                  else if (widget.experience!.bookingRequired)
+                    Text(
+                      'Booking is required — contact the venue for details.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).textTheme.bodySmall?.color,
+                      ),
+                    ),
+                ],
 
                 // Description with expand/collapse
                 if (description.isNotEmpty) ...[

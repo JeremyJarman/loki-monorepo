@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
 import { isHandleAvailable, normalizeHandle, reserveHandle, updateUserProfile } from '@/lib/userProfile';
+import { createArtistForUser } from '@/lib/artistProfile';
 
 const HANDLE_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 
@@ -13,6 +14,8 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [createArtistProfile, setCreateArtistProfile] = useState(false);
+  const [artistName, setArtistName] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [checkingHandle, setCheckingHandle] = useState(false);
@@ -66,13 +69,25 @@ export default function SignUpPage() {
       setError('Password must be at least 6 characters');
       return;
     }
+    if (createArtistProfile && !artistName.trim()) {
+      setError('Please enter your artist or band name');
+      return;
+    }
     setSubmitting(true);
     try {
       const newUser = await signUp(email, password);
       const normalized = normalizeHandle(trimmedHandle);
       await reserveHandle(newUser.uid, normalized);
       await updateUserProfile(newUser.uid, { username: normalized });
-      router.replace('/');
+      if (createArtistProfile && artistName.trim()) {
+        await createArtistForUser(newUser.uid, {
+          name: artistName.trim(),
+          handle: normalized.replace(/_/g, '-'), // Use username as base for artist handle
+        });
+        router.replace('/profile/artist');
+      } else {
+        router.replace('/');
+      }
     } catch (err: unknown) {
       const message = err && typeof err === 'object' && 'message' in err
         ? String((err as { message: string }).message)
@@ -175,13 +190,42 @@ export default function SignUpPage() {
               placeholder="Repeat password"
             />
           </div>
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-4 space-y-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={createArtistProfile}
+                onChange={(e) => setCreateArtistProfile(e.target.checked)}
+                className="rounded text-primary"
+              />
+              <span className="text-sm font-medium text-neutral">I'm an artist – create my artist profile</span>
+            </label>
+            {createArtistProfile && (
+              <div>
+                <label htmlFor="artistName" className="block text-sm font-medium text-neutral mb-1">
+                  Artist or band name
+                </label>
+                <input
+                  id="artistName"
+                  type="text"
+                  value={artistName}
+                  onChange={(e) => setArtistName(e.target.value)}
+                  placeholder="e.g. The Midnight Jazz Band"
+                  className="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-900 text-sm"
+                />
+                <p className="text-xs text-text-paragraph mt-0.5">
+                  You can add gigs, gallery, and more after signing up.
+                </p>
+              </div>
+            )}
+          </div>
           {error && (
             <p className="text-sm text-red-600 font-body">{error}</p>
           )}
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 rounded-lg font-body font-semibold text-white bg-primary hover:bg-primary-dark transition-colors disabled:opacity-60"
+            className="w-full py-3 rounded-lg font-body font-semibold text-on-primary bg-primary hover:bg-primary-dark transition-colors disabled:opacity-60"
           >
             {submitting ? 'Creating account…' : 'Create account'}
           </button>

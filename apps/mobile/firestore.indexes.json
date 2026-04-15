@@ -1,11 +1,27 @@
 {
   "indexes": [
     {
+      "collectionGroup": "event_rsvp",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "instanceId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "experiences",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "type", "order": "ASCENDING" },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "experienceInstances",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "artistId", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "startAt", "order": "DESCENDING" }
       ]
     }
   ],

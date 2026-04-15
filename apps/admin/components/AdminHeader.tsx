@@ -8,6 +8,7 @@ import { useAuth } from '@/components/AuthProvider';
 const NAV_LINKS = [
   { href: '/', label: 'Dashboard' },
   { href: '/venues', label: 'Venues' },
+  { href: '/artists', label: 'Artists' },
   { href: '/ai-test', label: 'Create Venue' },
   { href: '/events', label: 'Events' },
   { href: '/specials', label: 'Specials' },

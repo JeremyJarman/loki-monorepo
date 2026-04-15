@@ -5,12 +5,18 @@ import { db, storage } from './firebase';
 export type UserProfile = {
   /** Display name shown on cards and lists (e.g. "Jane Smith"). */
   displayName?: string;
+  /** Auto-created list for events marked interested/going from discover. */
+  defaultInterestedListId?: string;
   about?: string;
   profileImageUrl?: string;
   /** Unique handle, shown as @username (e.g. foodie_jane). */
   username?: string;
   /** Instagram profile URL (e.g. https://instagram.com/username). */
   instagramUrl?: string;
+  /** Website URL. */
+  websiteUrl?: string;
+  /** Artist profile ID when user has created an artist profile. */
+  artistId?: string;
   updatedAt?: unknown;
 };
 
@@ -33,6 +39,22 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 export async function getUsername(uid: string): Promise<string | null> {
   const profile = await getUserProfile(uid);
   return profile?.username ?? null;
+}
+
+/**
+ * Get multiple user profiles by ID. Fetches in parallel.
+ */
+export async function getUsersByIds(uids: string[]): Promise<Map<string, UserProfile>> {
+  const map = new Map<string, UserProfile>();
+  if (uids.length === 0) return map;
+  const unique = [...new Set(uids)];
+  const snaps = await Promise.all(unique.map((id) => getDoc(doc(db, USERS_COLLECTION, id))));
+  snaps.forEach((snap, i) => {
+    if (snap.exists()) {
+      map.set(unique[i], snap.data() as UserProfile);
+    }
+  });
+  return map;
 }
 
 /** Normalize handle for storage and uniqueness (lowercase, trim). */
@@ -88,6 +110,8 @@ export type SuggestedUser = {
   /** @handle for display (e.g. foodie_jane). */
   username?: string | null;
   profileImageUrl: string | null;
+  /** When set, user has an artist profile – link to /artists/{artistId} instead of /profile/{userId}. */
+  artistId?: string | null;
   subtitle?: string;
   followedByAvatarUrls?: string[];
   verified?: boolean;
@@ -113,6 +137,7 @@ export async function getSuggestedUsers(
       displayName,
       username: (data.username as string) || null,
       profileImageUrl: (data.profileImageUrl as string) || null,
+      artistId: (data.artistId as string) || null,
       subtitle: undefined,
       followedByAvatarUrls: undefined,
       verified: false,
@@ -142,6 +167,7 @@ export async function getAllUsers(excludeUserId: string | null): Promise<Suggest
       displayName,
       username: (data.username as string) || null,
       profileImageUrl: (data.profileImageUrl as string) || null,
+      artistId: (data.artistId as string) || null,
       subtitle: undefined,
       followedByAvatarUrls: undefined,
       verified: false,
@@ -157,7 +183,7 @@ export async function getAllUsers(excludeUserId: string | null): Promise<Suggest
  */
 export async function updateUserProfile(
   uid: string,
-  data: Partial<Pick<UserProfile, 'displayName' | 'about' | 'profileImageUrl' | 'username' | 'instagramUrl'>>
+  data: Partial<Pick<UserProfile, 'displayName' | 'about' | 'profileImageUrl' | 'username' | 'instagramUrl' | 'websiteUrl' | 'artistId'>>
 ): Promise<void> {
   const payload: Record<string, unknown> = { updatedAt: serverTimestamp() };
   for (const [key, value] of Object.entries(data)) {

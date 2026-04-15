@@ -66,14 +66,14 @@ export const Header: React.FC = () => {
               How It Works
             </a>
             <a
-              href="#for-creators"
+              href="#for-artists"
               onClick={(e) => {
                 e.preventDefault();
-                scrollToSection('for-creators');
+                scrollToSection('for-artists');
               }}
               className="text-neutral text-sm font-bold hover:text-neutral/80 transition-colors whitespace-nowrap"
             >
-              For Creators
+              For Artists
             </a>
             <a
               href="#cta"
@@ -133,14 +133,14 @@ export const Header: React.FC = () => {
               How It Works
             </a>
             <a
-              href="#for-creators"
+              href="#for-artists"
               onClick={(e) => {
                 e.preventDefault();
-                scrollToSection('for-creators');
+                scrollToSection('for-artists');
               }}
               className="block text-neutral text-sm font-bold hover:text-neutral/80 transition-colors"
             >
-              For Creators
+              For Artists
             </a>
             <a
               href="#cta"

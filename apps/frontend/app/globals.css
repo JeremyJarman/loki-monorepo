@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Design System Colors - match admin/landing */
 @theme {
   --color-primary: #122220;
@@ -17,6 +19,7 @@
   --color-text-paragraph: #6F6F6F;
   --color-background: #ffffff;
   --color-foreground: #000000;
+  --color-on-primary: #ffffff;
   --font-heading: 'Crimson Text', serif;
   --font-body: 'DM Sans', sans-serif;
   --font-mono: 'Roboto Mono', monospace;
@@ -25,6 +28,19 @@
 :root {
   --background: #ffffff;
   --foreground: #000000;
+}
+
+.dark {
+  --background: #0f1419;
+  --foreground: #e7e9ea;
+  --color-neutral-light: #2f3336;
+  --color-neutral: #e7e9ea;
+  --color-neutral-dark: #e7e9ea;
+  --color-text-paragraph: #8b98a5;
+  --color-background: #0f1419;
+  --color-primary: #ffffff;
+  --color-primary-dark: #e5e5e5;
+  --color-on-primary: #122220;
 }
 
 body {
@@ -40,7 +56,7 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   font-weight: 700;
-  color: #000000;
+  color: var(--foreground);
 }
 
 p {
@@ -54,4 +70,12 @@ p {
 }
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-sheet-slide-up {
+  animation: sheetSlideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }

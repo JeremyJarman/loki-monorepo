@@ -420,16 +420,27 @@ export default function VenueProfilePage() {
     venue.establishmentType ||
     (venue.tags && venue.tags.length > 0 ? formatTagForDisplay(venue.tags[0]) : '');
 
+  const backHref = searchParams.get('returnTo') ?? '/discover';
+
   return (
     <div className={`min-h-screen pb-12 ${effectiveDark ? 'bg-[#121212]' : 'bg-[#FDF8F6]'}`}>
-      {/* Header: fixed, only visible when scrolled to top */}
+      {/* Always-visible back button at top of content */}
+      <div className="max-w-4xl mx-auto px-2 sm:px-4 pt-2 pb-2">
+        <Link
+          href={backHref}
+          className={`inline-flex items-center gap-1 font-body text-sm font-semibold hover:underline ${effectiveDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-primary hover:text-primary-dark'}`}
+        >
+          ← Back
+        </Link>
+      </div>
+      {/* Header: fixed, only visible when scrolled to top (over image) */}
       <header
         className={`fixed top-0 left-0 right-0 z-20 h-14 flex items-center justify-between px-4 bg-black/50 text-white transition-transform duration-200 ease-out ${
           atTop ? 'translate-y-0' : '-translate-y-full'
         }`}
       >
         <Link
-          href="/discover"
+          href={backHref}
           className="text-white hover:text-white/90 font-body text-sm flex items-center gap-1"
         >
           ← Back

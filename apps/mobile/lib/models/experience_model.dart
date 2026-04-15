@@ -16,6 +16,10 @@ class ExperienceModel {
   final RecurrenceRule? recurrenceRule;
   final List<String>? tags; // Array of tag strings (max 3)
   final String? genre; // Music genre (only relevant when tags include "Live Music" or "DJ Night")
+  /// Events only: external booking/RSVP is required.
+  final bool bookingRequired;
+  /// Events only: URL to book tickets or RSVP.
+  final String? bookingLink;
   final Timestamp createdAt;
   final Timestamp updatedAt;
 
@@ -32,6 +36,8 @@ class ExperienceModel {
     this.recurrenceRule,
     this.tags,
     this.genre,
+    this.bookingRequired = false,
+    this.bookingLink,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -80,6 +86,9 @@ class ExperienceModel {
     // Handle genre - string or null
     final genreValue = data['genre'] as String?;
 
+    final bookingRequiredValue = data['bookingRequired'] as bool? ?? false;
+    final bookingLinkValue = data['bookingLink'] as String?;
+
     return ExperienceModel(
       experienceId: doc.id,
       venueId: _toString(data['venueId'] ?? data['venueID'], ''),
@@ -93,6 +102,8 @@ class ExperienceModel {
       recurrenceRule: recurrenceRuleValue,
       tags: tagsValue,
       genre: genreValue,
+      bookingRequired: bookingRequiredValue,
+      bookingLink: bookingLinkValue,
       createdAt: data['createdAt'] as Timestamp? ?? Timestamp.now(),
       updatedAt: data['updatedAt'] as Timestamp? ?? Timestamp.now(),
     );
@@ -111,6 +122,8 @@ class ExperienceModel {
       if (recurrenceRule != null) 'recurrenceRule': recurrenceRule!.toMap(),
       if (tags != null) 'tags': tags,
       if (genre != null) 'genre': genre,
+      if (type == 'event') 'bookingRequired': bookingRequired,
+      if (type == 'event' && bookingLink != null) 'bookingLink': bookingLink,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };

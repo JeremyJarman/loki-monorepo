@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/components/AuthProvider';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import Link from 'next/link';
-import { List, Users, Plus, Pencil, X } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/components/AuthProvider';
+import { Pencil, X, Music2 } from 'lucide-react';
 import {
   getUserProfile,
   updateUserProfile,
@@ -14,14 +15,23 @@ import {
   reserveHandle,
   type UserProfile,
 } from '@/lib/userProfile';
-import { getListsOwnedByUser, getListsWhereUserIsCollaborator, createList } from '@/lib/lists';
-import type { UserRef } from '@loki/shared';
+import { getFollowersCount, getFollowingCount } from '@/lib/following';
+import { getListsOwnedByUser } from '@/lib/lists';
+import { FollowersFollowingModal } from '@/components/FollowersFollowingModal';
 
 const HANDLE_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 
-export default function ProfilePage() {
+function ProfilePageInner() {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const accountOnly = searchParams.get('account') === '1';
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [listsCount, setListsCount] = useState(0);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,19 +40,13 @@ export default function ProfilePage() {
   const [editAbout, setEditAbout] = useState('');
   const [editHandle, setEditHandle] = useState('');
   const [editInstagramUrl, setEditInstagramUrl] = useState('');
+  const [editWebsiteUrl, setEditWebsiteUrl] = useState('');
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [checkingHandle, setCheckingHandle] = useState(false);
   const [handleAvailable, setHandleAvailable] = useState<boolean | null>(null);
-  const [ownedLists, setOwnedLists] = useState<{ id: string; name: string; itemCount: number }[]>([]);
-  const [collaborativeLists, setCollaborativeLists] = useState<{ id: string; name: string; itemCount: number; collaborators: string }[]>([]);
-  const [listsLoading, setListsLoading] = useState(false);
-  const [creatingList, setCreatingList] = useState(false);
-  const [showNewListForm, setShowNewListForm] = useState(false);
-  const [newListName, setNewListName] = useState('');
-  const [newListError, setNewListError] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
     if (!user?.uid) {
@@ -52,12 +56,21 @@ export default function ProfilePage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getUserProfile(user.uid);
+      const [data, followers, following, lists] = await Promise.all([
+        getUserProfile(user.uid),
+        getFollowersCount(user.uid),
+        getFollowingCount(user.uid),
+        getListsOwnedByUser(user.uid),
+      ]);
       setProfile(data ?? null);
+      setFollowersCount(followers);
+      setFollowingCount(following);
+      setListsCount(lists.length);
       setEditDisplayName(data?.displayName ?? '');
       setEditAbout(data?.about ?? '');
       setEditHandle(data?.username ?? '');
       setEditInstagramUrl(data?.instagramUrl ?? '');
+      setEditWebsiteUrl(data?.websiteUrl ?? '');
     } catch (e) {
       console.error(e);
       setError('Failed to load profile');
@@ -70,81 +83,20 @@ export default function ProfilePage() {
     loadProfile();
   }, [loadProfile]);
 
-  const loadLists = useCallback(async () => {
-    if (!user?.uid) return;
-    setListsLoading(true);
-    try {
-      const [owned, allCollaborative] = await Promise.all([
-        getListsOwnedByUser(user.uid),
-        getListsWhereUserIsCollaborator(user.uid),
-      ]);
-      setOwnedLists(
-        owned.map((l) => ({
-          id: l.id,
-          name: l.name,
-          itemCount: l.stats?.itemsCount ?? 0,
-        }))
-      );
-      const shared = allCollaborative.filter((l) => l.ownerId !== user.uid);
-      const collaboratorLabels = (collabs: { displayName?: string }[]) =>
-        collabs?.map((c) => c.displayName).filter(Boolean).join(', ') || '—';
-      setCollaborativeLists(
-        shared.map((l) => ({
-          id: l.id,
-          name: l.name,
-          itemCount: l.stats?.itemsCount ?? 0,
-          collaborators: collaboratorLabels(l.collaborators),
-        }))
-      );
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setListsLoading(false);
-    }
-  }, [user?.uid]);
-
   useEffect(() => {
-    loadLists();
-  }, [loadLists]);
-
-  const handleNewListClick = () => {
-    setShowNewListForm(true);
-    setNewListName('');
-    setNewListError(null);
-  };
-
-  const handleNewListSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.uid || !newListName.trim()) return;
-    setCreatingList(true);
-    try {
-      const displayLabel = profile?.displayName || profile?.username || user.displayName || user.email?.split('@')[0] || 'Someone';
-      const listId = await createList(
-        user.uid,
-        {
-          userId: user.uid,
-          displayName: displayLabel,
-          profileImageUrl: profile?.profileImageUrl ?? undefined,
-        } as UserRef,
-        newListName.trim()
-      );
-      await loadLists();
-      setShowNewListForm(false);
-      setNewListName('');
-      window.location.href = `/lists/${listId}`;
-    } catch (err) {
-      console.error(err);
-      setNewListError(err instanceof Error ? err.message : 'Failed to create list');
-    } finally {
-      setCreatingList(false);
+    if (loading || !user?.uid || accountOnly) return;
+    const aid = profile?.artistId;
+    if (aid) {
+      router.replace(`/artists/${aid}`);
     }
-  };
+  }, [loading, user?.uid, profile?.artistId, accountOnly, router]);
 
   const startEditing = () => {
     setEditDisplayName(profile?.displayName ?? '');
     setEditAbout(profile?.about ?? '');
     setEditHandle(profile?.username ?? '');
     setEditInstagramUrl(profile?.instagramUrl ?? '');
+    setEditWebsiteUrl(profile?.websiteUrl ?? '');
     setEditImageFile(null);
     setEditImagePreview(null);
     setSaveError(null);
@@ -218,6 +170,7 @@ export default function ProfilePage() {
         if (newNormalized) await reserveHandle(user.uid, newNormalized);
       }
       const instagramVal = editInstagramUrl.trim() || undefined;
+      const websiteVal = editWebsiteUrl.trim() || undefined;
       const displayNameVal = editDisplayName.trim() || undefined;
       await updateUserProfile(user.uid, {
         displayName: displayNameVal,
@@ -225,6 +178,7 @@ export default function ProfilePage() {
         profileImageUrl: profileImageUrl || undefined,
         username: newNormalized || undefined,
         instagramUrl: instagramVal,
+        websiteUrl: websiteVal,
       });
       setProfile((prev) => ({
         ...prev,
@@ -233,6 +187,7 @@ export default function ProfilePage() {
         profileImageUrl: profileImageUrl || undefined,
         username: newNormalized || undefined,
         instagramUrl: instagramVal,
+        websiteUrl: websiteVal,
       }));
       cancelEditing();
     } catch (e) {
@@ -243,6 +198,27 @@ export default function ProfilePage() {
     }
   };
 
+  const isUserProfileDirty = useMemo(() => {
+    if (!editing || !profile) return false;
+    return (
+      editDisplayName.trim() !== (profile.displayName?.trim() ?? '') ||
+      editAbout.trim() !== (profile.about?.trim() ?? '') ||
+      editHandle.trim() !== (profile.username?.trim() ?? '') ||
+      editInstagramUrl.trim() !== (profile.instagramUrl?.trim() ?? '') ||
+      editWebsiteUrl.trim() !== (profile.websiteUrl?.trim() ?? '') ||
+      editImageFile !== null
+    );
+  }, [
+    editing,
+    profile,
+    editDisplayName,
+    editAbout,
+    editHandle,
+    editInstagramUrl,
+    editWebsiteUrl,
+    editImageFile,
+  ]);
+
   if (loading) {
     return (
       <div className="min-h-[40vh] flex items-center justify-center">
@@ -251,18 +227,29 @@ export default function ProfilePage() {
     );
   }
 
+  const displayName = profile?.displayName?.trim() || profile?.username || 'Profile';
+
+  const accountBackHref = profile?.artistId ? `/artists/${profile.artistId}` : '/discover';
+
   return (
     <div className="space-y-8">
+      {accountOnly && (
+        <p>
+          <Link href={accountBackHref} className="text-primary hover:underline text-sm font-medium font-body">
+            ← Back
+          </Link>
+        </p>
+      )}
       <section>
-        <h1 className="font-heading font-bold text-2xl text-neutral mb-2">Profile</h1>
+        <h1 className="font-heading font-bold text-2xl text-neutral dark:text-neutral-200 mb-2">Profile</h1>
 
-        <div className="rounded-xl border border-neutral-light bg-white p-4 mb-6">
+        <div className="rounded-xl border border-neutral-light dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Profile image */}
             <div className="flex-shrink-0">
               {editing ? (
                 <div className="space-y-2">
-                  <div className="w-24 h-24 rounded-full overflow-hidden bg-neutral-100 border-2 border-neutral-200 flex items-center justify-center">
+                  <div className="w-32 h-32 rounded-full overflow-hidden bg-neutral-100 dark:bg-neutral-800 border-2 border-neutral-200 dark:border-neutral-600 flex items-center justify-center">
                     {editImagePreview ? (
                       <img
                         src={editImagePreview}
@@ -276,7 +263,7 @@ export default function ProfilePage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-3xl text-neutral-400 font-heading">
+                      <span className="text-4xl text-neutral-400 font-heading">
                         {user?.email?.charAt(0).toUpperCase() ?? '?'}
                       </span>
                     )}
@@ -287,12 +274,12 @@ export default function ProfilePage() {
                       type="file"
                       accept="image/*"
                       onChange={onImageChange}
-                      className="block w-full text-sm font-body text-text-paragraph file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white file:font-semibold"
+                      className="block w-full text-sm font-body text-text-paragraph file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-primary file:text-on-primary file:font-semibold"
                     />
                   </label>
                 </div>
               ) : (
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-neutral-100 border-2 border-neutral-200 flex items-center justify-center">
+                <div className="w-32 h-32 rounded-full overflow-hidden bg-neutral-100 dark:bg-neutral-800 border-2 border-neutral-200 dark:border-neutral-600 flex items-center justify-center">
                   {profile?.profileImageUrl ? (
                     <img
                       src={profile.profileImageUrl}
@@ -300,7 +287,7 @@ export default function ProfilePage() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-3xl text-neutral-400 font-heading">
+                    <span className="text-4xl text-neutral-400 font-heading">
                       {user?.email?.charAt(0).toUpperCase() ?? '?'}
                     </span>
                   )}
@@ -309,16 +296,44 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="font-body text-sm text-neutral font-medium">
+              <h2 className="font-heading font-bold text-xl text-neutral dark:text-neutral-200">
+                {displayName}
+              </h2>
+              {profile?.username && (
+                <p className="font-body text-text-paragraph mt-0.5">@{profile.username}</p>
+              )}
+              <div className="flex flex-wrap gap-6 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFollowersModal(true)}
+                  className="font-body text-sm font-semibold text-neutral dark:text-neutral-200 hover:text-primary dark:hover:text-primary text-left"
+                >
+                  <span className="font-bold tabular-nums">{followersCount}</span> Followers
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFollowingModal(true)}
+                  className="font-body text-sm font-semibold text-neutral dark:text-neutral-200 hover:text-primary dark:hover:text-primary text-left"
+                >
+                  <span className="font-bold tabular-nums">{followingCount}</span> Following
+                </button>
+                <Link
+                  href={`/profile/${user?.uid}/lists`}
+                  className="font-body text-sm font-semibold text-neutral dark:text-neutral-200 hover:text-primary dark:hover:text-primary"
+                >
+                  <span className="font-bold tabular-nums">{listsCount}</span> Lists
+                </Link>
+              </div>
+              <p className="font-body text-sm text-neutral font-medium mt-3">
                 {user?.email ?? 'Signed in'}
               </p>
               <p className="font-body text-xs text-text-paragraph mt-1">
-                Manage your profile, lists and collaborative lists here.
+                Manage your profile and public profile page here.
               </p>
 
               {/* Display name */}
               <div className="mt-4">
-                <h3 className="text-xs font-semibold text-neutral uppercase tracking-wide mb-1.5">
+                <h3 className="text-xs font-semibold text-neutral dark:text-neutral-200 uppercase tracking-wide mb-1.5">
                   Display name
                 </h3>
                 {editing ? (
@@ -328,7 +343,7 @@ export default function ProfilePage() {
                     onChange={(e) => setEditDisplayName(e.target.value)}
                     placeholder="e.g. Jane Smith"
                     maxLength={60}
-                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-sm font-body text-neutral-900 placeholder-neutral-400"
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-600 text-sm font-body text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 bg-white dark:bg-neutral-900"
                   />
                 ) : (
                   <p className="font-body text-sm text-text-paragraph">
@@ -340,7 +355,7 @@ export default function ProfilePage() {
 
               {/* Username */}
               <div className="mt-4">
-                <h3 className="text-xs font-semibold text-neutral uppercase tracking-wide mb-1.5">
+                <h3 className="text-xs font-semibold text-neutral dark:text-neutral-200 uppercase tracking-wide mb-1.5">
                   Username
                 </h3>
                 {editing ? (
@@ -356,7 +371,7 @@ export default function ProfilePage() {
                       placeholder="e.g. foodie_jane"
                       minLength={3}
                       maxLength={30}
-                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-sm font-body text-neutral-900 placeholder-neutral-400"
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-600 text-sm font-body text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 bg-white dark:bg-neutral-900"
                     />
                     {checkingHandle && (
                       <p className="text-xs text-text-paragraph mt-1">Checking availability…</p>
@@ -378,7 +393,7 @@ export default function ProfilePage() {
 
               {/* About */}
               <div className="mt-4">
-                <h3 className="text-xs font-semibold text-neutral uppercase tracking-wide mb-1.5">
+                <h3 className="text-xs font-semibold text-neutral dark:text-neutral-200 uppercase tracking-wide mb-1.5">
                   About
                 </h3>
                 {editing ? (
@@ -387,7 +402,7 @@ export default function ProfilePage() {
                     onChange={(e) => setEditAbout(e.target.value)}
                     placeholder="Tell others a bit about yourself…"
                     rows={4}
-                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-sm font-body text-neutral-900 placeholder-neutral-400"
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-600 text-sm font-body text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 bg-white dark:bg-neutral-900"
                   />
                 ) : (
                   <p className="font-body text-sm text-text-paragraph whitespace-pre-wrap">
@@ -398,7 +413,7 @@ export default function ProfilePage() {
 
               {/* Instagram */}
               <div className="mt-4">
-                <h3 className="text-xs font-semibold text-neutral uppercase tracking-wide mb-1.5">
+                <h3 className="text-xs font-semibold text-neutral dark:text-neutral-200 uppercase tracking-wide mb-1.5">
                   Instagram
                 </h3>
                 {editing ? (
@@ -407,7 +422,7 @@ export default function ProfilePage() {
                     value={editInstagramUrl}
                     onChange={(e) => setEditInstagramUrl(e.target.value)}
                     placeholder="https://instagram.com/yourhandle"
-                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-sm font-body text-neutral-900 placeholder-neutral-400"
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-600 text-sm font-body text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 bg-white dark:bg-neutral-900"
                   />
                 ) : (
                   <p className="font-body text-sm text-text-paragraph">
@@ -427,6 +442,37 @@ export default function ProfilePage() {
                 )}
               </div>
 
+              {/* Website */}
+              <div className="mt-4">
+                <h3 className="text-xs font-semibold text-neutral dark:text-neutral-200 uppercase tracking-wide mb-1.5">
+                  Website
+                </h3>
+                {editing ? (
+                  <input
+                    type="url"
+                    value={editWebsiteUrl}
+                    onChange={(e) => setEditWebsiteUrl(e.target.value)}
+                    placeholder="https://yoursite.com"
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-600 text-sm font-body text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 bg-white dark:bg-neutral-900"
+                  />
+                ) : (
+                  <p className="font-body text-sm text-text-paragraph">
+                    {profile?.websiteUrl ? (
+                      <a
+                        href={profile.websiteUrl.startsWith('http') ? profile.websiteUrl : `https://${profile.websiteUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {profile.websiteUrl}
+                      </a>
+                    ) : (
+                      'Not set'
+                    )}
+                  </p>
+                )}
+              </div>
+
               {error && (
                 <p className="mt-2 text-sm text-red-600 font-body">{error}</p>
               )}
@@ -435,20 +481,29 @@ export default function ProfilePage() {
               )}
 
               {editing ? (
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
                     onClick={handleSave}
                     disabled={saving}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg font-body text-sm font-semibold bg-primary text-white hover:bg-primary-dark disabled:opacity-60"
+                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg font-body text-sm font-semibold bg-primary text-on-primary hover:bg-primary-dark disabled:opacity-60 transition-shadow ${
+                      isUserProfileDirty && !saving
+                        ? 'ring-2 ring-amber-500/80 ring-offset-2 ring-offset-white dark:ring-amber-400/70 dark:ring-offset-neutral-950'
+                        : ''
+                    }`}
                   >
                     {saving ? 'Saving…' : 'Save'}
                   </button>
+                  {isUserProfileDirty && !saving && (
+                    <span className="text-xs font-body font-medium text-amber-800 dark:text-amber-400">
+                      Unsaved changes
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={cancelEditing}
                     disabled={saving}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg font-body text-sm font-semibold border border-neutral-200 text-neutral hover:bg-neutral-50"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg font-body text-sm font-semibold border border-neutral-200 dark:border-neutral-600 text-neutral dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
                   >
                     <X className="w-4 h-4" />
                     Cancel
@@ -467,112 +522,63 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-      </section>
 
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-heading font-bold text-lg text-neutral flex items-center gap-2">
-            <List className="w-5 h-5 text-primary" />
-            My lists
-          </h2>
-          <button
-            type="button"
-            onClick={handleNewListClick}
-            disabled={creatingList || !user?.uid}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg font-body text-sm font-semibold bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-60"
-          >
-            <Plus className="w-4 h-4" />
-            New list
-          </button>
-        </div>
-        {showNewListForm && (
-          <form onSubmit={handleNewListSubmit} className="mb-4 p-4 rounded-xl border border-neutral-light bg-neutral-50/50">
-            <label htmlFor="new-list-name" className="block text-sm font-medium text-neutral mb-2">
-              List name
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="new-list-name"
-                type="text"
-                value={newListName}
-                onChange={(e) => setNewListName(e.target.value)}
-                placeholder="e.g. We need to try this"
-                className="flex-1 px-3 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-900 text-sm"
-                autoFocus
-                disabled={creatingList}
-              />
-              <button
-                type="submit"
-                disabled={creatingList || !newListName.trim()}
-                className="px-4 py-2 rounded-lg font-body text-sm font-semibold bg-primary text-white hover:bg-primary-dark disabled:opacity-60"
-              >
-                {creatingList ? 'Creating…' : 'Create'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowNewListForm(false); setNewListName(''); setNewListError(null); }}
-                disabled={creatingList}
-                className="px-4 py-2 rounded-lg font-body text-sm font-semibold border border-neutral-200 text-neutral hover:bg-neutral-50"
-              >
-                Cancel
-              </button>
-            </div>
-            {newListError && <p className="mt-2 text-sm text-red-600 font-body">{newListError}</p>}
-          </form>
-        )}
-        {listsLoading ? (
-          <p className="font-body text-sm text-text-paragraph">Loading lists…</p>
-        ) : (
-        <ul className="space-y-3">
-          {ownedLists.map((list) => (
-            <li key={list.id}>
-              <Link
-                href={`/lists/${list.id}`}
-                className="block rounded-xl border border-neutral-light bg-white p-4 hover:border-primary/30 transition-colors"
-              >
-                <span className="font-body font-semibold text-[#000000] block">{list.name}</span>
-                <p className="font-body text-xs text-text-paragraph mt-0.5">{list.itemCount} items</p>
+        {/* Artist profile section (hidden when editing account as an artist — use artist page for that) */}
+        {!(accountOnly && profile?.artistId) && (
+          <div className="rounded-xl border border-neutral-light dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6">
+            <h2 className="font-heading font-bold text-lg text-neutral dark:text-neutral-200 mb-2 flex items-center gap-2">
+              <Music2 className="w-5 h-5 text-primary" />
+              Artist profile
+            </h2>
+            <p className="font-body text-sm text-text-paragraph mb-4">
+              Create and manage your artist profile to add gigs, gallery images, and share your upcoming events.
+            </p>
+            <Link
+              href="/profile/artist"
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-body text-sm font-semibold ${
+                profile?.artistId
+                  ? 'bg-primary text-on-primary hover:bg-primary-dark'
+                  : 'border border-primary text-primary hover:bg-primary/10'
+              }`}
+            >
+              {profile?.artistId ? 'Manage artist profile' : 'Create artist profile'}
             </Link>
-          </li>
-          ))}
-        </ul>
-        )}
-        {!listsLoading && ownedLists.length === 0 && (
-          <p className="font-body text-sm text-text-paragraph">No lists yet. Create one with &quot;New list&quot;.</p>
+          </div>
         )}
       </section>
 
-      <section>
-        <h2 className="font-heading font-bold text-lg text-neutral flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-primary" />
-          Shared with me
-        </h2>
-        {listsLoading ? (
-          <p className="font-body text-sm text-text-paragraph">Loading lists…</p>
-        ) : (
-        <ul className="space-y-3">
-          {collaborativeLists.map((list) => (
-            <li key={list.id}>
-              <Link
-                href={`/lists/${list.id}`}
-                className="block rounded-xl border border-neutral-light bg-white p-4 hover:border-primary/30 transition-colors"
-              >
-                <span className="font-body font-semibold text-[#000000] block">{list.name}</span>
-                <p className="font-body text-xs text-text-paragraph mt-0.5">
-                  {list.itemCount} items · Shared with {list.collaborators}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        )}
-        {!listsLoading && collaborativeLists.length === 0 && (
-          <p className="font-body text-sm text-text-paragraph">Lists shared with you will appear here.</p>
-        )}
-        <p className="font-body text-sm text-text-paragraph mt-4">
-          Open a list to add items, react, and discuss. Add collaborators from a list you own with &quot;Add collaborator&quot;.
-        </p>
-      </section>
+      {showFollowersModal && user?.uid && (
+        <FollowersFollowingModal
+          type="followers"
+          profileUserId={user.uid}
+          currentUserId={user.uid}
+          onClose={() => setShowFollowersModal(false)}
+          onCountChange={loadProfile}
+        />
+      )}
+      {showFollowingModal && user?.uid && (
+        <FollowersFollowingModal
+          type="following"
+          profileUserId={user.uid}
+          currentUserId={user.uid}
+          onClose={() => setShowFollowingModal(false)}
+          onCountChange={loadProfile}
+        />
+      )}
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[40vh] flex items-center justify-center">
+          <p className="font-body text-text-paragraph">Loading…</p>
+        </div>
+      }
+    >
+      <ProfilePageInner />
+    </Suspense>
   );
 }

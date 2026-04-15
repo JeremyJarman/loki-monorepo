@@ -197,6 +197,16 @@ export default function Home() {
             <span className="text-primary font-medium text-sm">Manage Venues →</span>
           </Link>
           <Link
+            href="/artists"
+            className="bg-white p-6 rounded-xl shadow border border-neutral-light hover:border-primary transition-colors block"
+          >
+            <h2 className="text-xl font-heading font-semibold text-neutral mb-2">Artists</h2>
+            <p className="text-text-paragraph text-sm mb-4">
+              Create artist profiles with about, gallery, and shareable gig lists.
+            </p>
+            <span className="text-primary font-medium text-sm">Manage Artists →</span>
+          </Link>
+          <Link
             href="/events"
             className="bg-white p-6 rounded-xl shadow border border-neutral-light hover:border-primary transition-colors block"
           >

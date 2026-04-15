@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
@@ -13,10 +13,11 @@ export default function LoginPage() {
   const { signIn, user } = useAuth();
   const router = useRouter();
 
-  if (user) {
-    router.replace('/');
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      router.replace('/');
+    }
+  }, [user, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,6 +34,10 @@ export default function LoginPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (user) {
+    return null;
   }
 
   return (
@@ -76,7 +81,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 rounded-lg font-body font-semibold text-white bg-primary hover:bg-primary-dark transition-colors disabled:opacity-60"
+            className="w-full py-3 rounded-lg font-body font-semibold text-on-primary bg-primary hover:bg-primary-dark transition-colors disabled:opacity-60"
           >
             {submitting ? 'Signing in…' : 'Sign in'}
           </button>

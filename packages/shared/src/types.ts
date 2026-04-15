@@ -71,6 +71,34 @@ export interface Venue {
   tags?: string[]; // Array of selected tag strings
 }
 
+// Artist profile (admin-managed or self-managed by artist)
+export interface Artist {
+  id: string;
+  name: string;
+  /** Firebase Auth user ID when artist manages their own profile */
+  userId?: string;
+  /** URL-safe handle for shareable gig list (e.g. loki.app/gigs/artist-handle) */
+  handle?: string;
+  /** Short about text shown in profile header card */
+  about?: string;
+  /** Longer details/bio text shown in About tab */
+  details?: string;
+  /** Gallery images */
+  imageUrl?: string[];
+  /** Focus position per image: 'center' | 'top' | 'bottom' | 'left' | 'right' */
+  imageFocus?: string[];
+  /** Artist website URL */
+  websiteUrl?: string;
+  /** Artist Instagram URL or handle (e.g. @artist or full URL) */
+  instagramUrl?: string;
+  /** Music genres (suggested labels + custom); see normalizeArtistGenres, max 5 */
+  genres?: string[];
+  /** Role / style tags (e.g. DJ, Guitarist); see normalizeArtistDescriptors, max 2 */
+  descriptors?: string[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 // Venue Experience Reference
 export interface VenueExperience {
   experienceId: string;
@@ -83,17 +111,36 @@ export interface VenueExperience {
 // Experience (the definition/idea)
 export interface Experience {
   id: string;
-  venueId: string;
+  /** Venue ID when gig is at a venue in our database; null for custom venues */
+  venueId: string | null;
+  /** Custom venue name when venueId is null (venue not in our DB) */
+  customVenueName?: string;
+  /** Custom venue address when venueId is null */
+  customVenueAddress?: string;
+  /** Custom venue coordinates (from Google Places) when venueId is null */
+  customVenueLat?: number;
+  customVenueLng?: number;
+  /** Artist ID for events - links to artists collection */
+  artistId?: string;
   type: 'event' | 'special';
 
   title: string;
   description: string;
   imageUrl: string | null;
+  /** Artist or band name for events. */
+  artistName?: string;
   cost: number | null; // in euros (e.g., 15 or 15.50)
   /** When true, cost is shown as "£10 pp" (per person) on specials. Specials only. */
   costPerPerson?: boolean;
   tags?: string[]; // Array of special/event tags (e.g., "Happy Hour", "Meal Deal")
   genre?: string; // Music genre - shown when "Live Music" or "DJ Night" tags are selected
+  /** Event capacity status: sold_out, limited, open */
+  capacityStatus?: 'sold_out' | 'limited' | 'open';
+
+  /** Events only: tickets or RSVP must be completed externally. */
+  bookingRequired?: boolean;
+  /** Events only: URL to book tickets or RSVP (shown in the app). */
+  bookingLink?: string | null;
 
   isRecurring: boolean;
 
@@ -111,7 +158,14 @@ export interface Experience {
 export interface ExperienceInstance {
   id: string;
   experienceId: string;
-  venueId: string;
+  /** Venue ID when gig is at a venue in our database; null for custom venues */
+  venueId: string | null;
+  /** Custom venue name when venueId is null */
+  customVenueName?: string;
+  /** Custom venue address when venueId is null */
+  customVenueAddress?: string;
+  customVenueLat?: number;
+  customVenueLng?: number;
 
   type: 'event' | 'special';
   title: string;
@@ -177,6 +231,8 @@ export interface ListMetadata {
   /** Collaborators (denormalized for quick access). */
   collaborators: CollaboratorRef[];
   isPublic: boolean;
+  /** When false, collaborator names are hidden from non-owner/collaborators. */
+  showCollaborators: boolean;
   allowComments: boolean;
   allowReactions: boolean;
   stats: {
@@ -214,12 +270,51 @@ export interface ListItemSpecial {
   cuisine?: string;
 }
 
-/** List item document at lists/{listId}/items/{itemId}. References experience (type 'special') by experienceId. */
+/** Denormalised event info for display on a list item (from experienceInstances + experiences + venues). */
+export interface ListItemEvent {
+  instanceId: string;
+  experienceId: string;
+  venueId: string;
+  venueName: string;
+  eventTitle: string;
+  artistName?: string;
+  /** Firestore artists/{artistId} for profile link */
+  artistId?: string;
+  startAt: Timestamp;
+  genre?: string;
+  price?: string;
+  cost?: number | null;
+  currency?: string;
+  imageUrl: string | null;
+  capacityStatus?: 'sold_out' | 'limited' | 'open';
+  bookingRequired?: boolean;
+  bookingLink?: string | null;
+}
+
+/** User's RSVP on a list item: lists/{listId}/items/{itemId}/event_rsvp/{userId}. */
+export interface ListItemEventRsvpDoc {
+  userId: string;
+  interested: boolean;
+  going: boolean;
+  /** Denormalized for collection-group queries; experience instance this RSVP refers to. */
+  instanceId?: string | null;
+  displayName?: string | null;
+  profileImageUrl?: string | null;
+  updatedAt: Timestamp;
+}
+
+/** List item document at lists/{listId}/items/{itemId}. References experience by experienceId, or event by instanceId. */
 export interface ListItemDoc {
   itemId: string;
   listId: string;
+  /** Experience ID (for specials) or parent experience of event. */
   experienceId: string;
-  special: ListItemSpecial;
+  /** Instance ID for events; empty for specials. */
+  instanceId?: string;
+  /** Denormalised special data (legacy / specials). */
+  special?: ListItemSpecial;
+  /** Denormalised event data (live events). */
+  event?: ListItemEvent;
   addedBy: UserRef;
   stats: {
     reactionsCount: number;
@@ -255,6 +350,17 @@ export interface ListItemCommentDoc {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   isEdited: boolean;
+  isDeleted: boolean;
+}
+
+/** Comment on an event instance: experienceInstances/{instanceId}/comments/{commentId}. */
+export interface EventInstanceCommentDoc {
+  commentId: string;
+  instanceId: string;
+  text: string;
+  author: UserRef;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
   isDeleted: boolean;
 }
 

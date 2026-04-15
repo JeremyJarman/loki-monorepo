@@ -1,12 +1,41 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // DEVELOPMENT RULES - Allows all access
-    // ⚠️ WARNING: These rules allow anyone to read/write your storage
-    // Only use for development/testing!
-    
-    match /{allPaths=**} {
+
+    // Artist gallery: public read (gig page), write for authenticated users
+    // Using {allPaths=**} to match artists/{id}/gallery/0.jpg and any nested structure
+    match /artists/{allPaths=**} {
       allow read, write: if true;
+    }
+
+    // Venue images (venue, food, menu, menu-items)
+    match /venues/{venueId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Events
+    match /events/{eventId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Specials
+    match /specials/{specialId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // User profile images
+    match /users/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Catch-all for any other paths
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }

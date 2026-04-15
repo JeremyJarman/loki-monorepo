@@ -10,16 +10,15 @@ export const Footer: React.FC = () => {
     product: [
       { label: 'Features', href: '#solution' },
       { label: 'How It Works', href: '#how-it-works' },
-      { label: 'For Venues', href: '#business-value' },
+      { label: 'For Artists', href: '#for-artists' },
     ],
     company: [
-      { label: 'About', href: '#' },
-      { label: 'Blog', href: '#' },
+      { label: 'Join Waitlist', href: '/#join-waitlist' },
       { label: 'Contact', href: `mailto:${COMPANY_INFO.email}` },
     ],
     legal: [
-      { label: 'Privacy Policy', href: '#' },
-      { label: 'Terms of Service', href: '#' },
+      { label: 'Privacy Policy', href: '/#privacy-policy' },
+      { label: 'Terms of Service', href: '/#terms-of-service' },
     ],
   };
 

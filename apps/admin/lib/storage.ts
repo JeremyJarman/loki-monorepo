@@ -1,7 +1,7 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from './firebase';
 
-export type ImageFolderType = 'venue' | 'food' | 'menu' | 'events' | 'specials' | 'menu-item';
+export type ImageFolderType = 'venue' | 'food' | 'menu' | 'events' | 'specials' | 'menu-item' | 'artist';
 
 /**
  * Clean Storage Structure:
@@ -107,6 +107,10 @@ export async function uploadImagesToFolder(
       // venues/{venueId}/menu-items/{itemId}/
       // Note: entityId should be in format "venueId/itemId"
       basePath = `venues/${entityId}`;
+      break;
+    case 'artist':
+      // artists/{artistId}/gallery/
+      basePath = `artists/${entityId}/gallery`;
       break;
     default:
       throw new Error(`Invalid folder type: ${folderType}`);

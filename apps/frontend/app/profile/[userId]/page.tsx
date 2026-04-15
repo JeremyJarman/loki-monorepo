@@ -5,7 +5,9 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
 import { getUserProfile } from '@/lib/userProfile';
-import { getListsOwnedByUser } from '@/lib/lists';
+import { getListsOwnedByUserForProfileView } from '@/lib/lists';
+import { getFollowersCount, getFollowingCount } from '@/lib/following';
+import { FollowersFollowingModal } from '@/components/FollowersFollowingModal';
 import type { UserProfile } from '@/lib/userProfile';
 
 export default function PublicProfilePage() {
@@ -16,6 +18,10 @@ export default function PublicProfilePage() {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [lists, setLists] = useState<{ id: string; name: string; itemCount: number }[]>([]);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,11 +36,15 @@ export default function PublicProfilePage() {
         router.replace('/profile');
         return;
       }
-      const [profileData, listsData] = await Promise.all([
+      const [profileData, listsData, followers, following] = await Promise.all([
         getUserProfile(userId),
-        getListsOwnedByUser(userId),
+        getListsOwnedByUserForProfileView(userId, currentUser?.uid ?? null),
+        getFollowersCount(userId),
+        getFollowingCount(userId),
       ]);
       setProfile(profileData ?? null);
+      setFollowersCount(followers);
+      setFollowingCount(following);
       setLists(
         listsData.map((l) => ({
           id: l.id,
@@ -48,7 +58,7 @@ export default function PublicProfilePage() {
     } finally {
       setLoading(false);
     }
-  }, [userId, isOwnProfile, router]);
+  }, [userId, isOwnProfile, router, currentUser?.uid]);
 
   useEffect(() => {
     if (isOwnProfile) return;
@@ -90,16 +100,10 @@ export default function PublicProfilePage() {
         ← Back
       </Link>
       <section>
-        <h1 className="font-heading font-bold text-2xl text-neutral mb-2">
-          {displayName}&apos;s profile
-          {profile?.username && (
-            <span className="font-body font-normal text-text-paragraph ml-1.5">@{profile.username}</span>
-          )}
-        </h1>
-        <div className="rounded-xl border border-neutral-light bg-white p-4 mb-6">
+        <div className="rounded-xl border border-neutral-light dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-shrink-0">
-              <div className="w-24 h-24 rounded-full overflow-hidden bg-neutral-100 border-2 border-neutral-200 flex items-center justify-center">
+              <div className="w-32 h-32 rounded-full overflow-hidden bg-neutral-100 dark:bg-neutral-800 border-2 border-neutral-200 dark:border-neutral-600 flex items-center justify-center">
                 {profile?.profileImageUrl ? (
                   <img
                     src={profile.profileImageUrl}
@@ -107,14 +111,42 @@ export default function PublicProfilePage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-3xl text-neutral-400 font-heading">
+                  <span className="text-4xl text-neutral-400 font-heading">
                     {displayName.charAt(0).toUpperCase()}
                   </span>
                 )}
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-body text-sm text-text-paragraph whitespace-pre-wrap">
+              <h1 className="font-heading font-bold text-2xl text-neutral dark:text-neutral-200">
+                {displayName}&apos;s profile
+              </h1>
+              {profile?.username && (
+                <p className="font-body text-text-paragraph mt-0.5">@{profile.username}</p>
+              )}
+              <div className="flex flex-wrap gap-6 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFollowersModal(true)}
+                  className="font-body text-sm font-semibold text-neutral dark:text-neutral-200 hover:text-primary dark:hover:text-primary text-left"
+                >
+                  <span className="font-bold tabular-nums">{followersCount}</span> Followers
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFollowingModal(true)}
+                  className="font-body text-sm font-semibold text-neutral dark:text-neutral-200 hover:text-primary dark:hover:text-primary text-left"
+                >
+                  <span className="font-bold tabular-nums">{followingCount}</span> Following
+                </button>
+                <Link
+                  href={`/profile/${userId}/lists`}
+                  className="font-body text-sm font-semibold text-neutral dark:text-neutral-200 hover:text-primary dark:hover:text-primary"
+                >
+                  <span className="font-bold tabular-nums">{lists.length}</span> Lists
+                </Link>
+              </div>
+              <p className="font-body text-sm text-text-paragraph whitespace-pre-wrap mt-3">
                 {profile?.about?.trim() || 'No about text yet.'}
               </p>
               {profile?.instagramUrl && (
@@ -133,8 +165,27 @@ export default function PublicProfilePage() {
           </div>
         </div>
       </section>
+
+      {showFollowersModal && (
+        <FollowersFollowingModal
+          type="followers"
+          profileUserId={userId}
+          currentUserId={currentUser?.uid ?? null}
+          onClose={() => setShowFollowersModal(false)}
+          onCountChange={load}
+        />
+      )}
+      {showFollowingModal && (
+        <FollowersFollowingModal
+          type="following"
+          profileUserId={userId}
+          currentUserId={currentUser?.uid ?? null}
+          onClose={() => setShowFollowingModal(false)}
+          onCountChange={load}
+        />
+      )}
       <section>
-        <h2 className="font-heading font-bold text-lg text-neutral mb-4">Lists</h2>
+        <h2 className="font-heading font-bold text-lg text-neutral dark:text-neutral-200 mb-4">Lists</h2>
         {lists.length === 0 ? (
           <p className="font-body text-sm text-text-paragraph">No lists yet.</p>
         ) : (
@@ -143,9 +194,9 @@ export default function PublicProfilePage() {
               <li key={list.id}>
                 <Link
                   href={`/lists/${list.id}`}
-                  className="block rounded-xl border border-neutral-light bg-white p-4 hover:border-primary/30 transition-colors"
+                  className="block rounded-xl border border-neutral-light dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 hover:border-primary/30 transition-colors"
                 >
-                  <span className="font-body font-semibold text-[#000000] block">{list.name}</span>
+                  <span className="font-body font-semibold text-neutral dark:text-neutral-100 block">{list.name}</span>
                   <p className="font-body text-xs text-text-paragraph mt-0.5">{list.itemCount} items</p>
                 </Link>
               </li>

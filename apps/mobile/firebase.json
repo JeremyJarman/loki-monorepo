@@ -1,0 +1,9 @@
+{
+  "projectId": "loki-a8e2c",
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}
