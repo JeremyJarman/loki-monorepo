@@ -9,32 +9,6 @@ From the monorepo root:
 ```bash
 npm run dev:frontend
 ```
-
-Or from this directory:
-
-```bash
-npm run dev
-```
-
-The app will be at **http://localhost:3001** (admin uses 3000).
-
-## Environment
-
-Create `apps/frontend/.env.local` with the same Firebase config as admin (same project is typical):
-
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
-
-You can copy from `apps/admin/.env.local` if you use one project.
-
-## Auth
-
-The app requires sign-in. Use existing Firebase Auth users (email/password). Unauthenticated users are redirected to `/login`.
-
 ## Structure
 
 - **Home** (`/`) – Activity feed placeholder; links to Discover and Profile.

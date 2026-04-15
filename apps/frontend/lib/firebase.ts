@@ -14,7 +14,7 @@ const requiredEnvVars = [
 
 const missingVars = requiredEnvVars.filter((name) => !process.env[name]);
 if (missingVars.length > 0) {
-  const msg = `Missing Firebase env: ${missingVars.join(', ')}. Set them in apps/frontend/.env.local (copy from apps/admin/.env.local).`;
+  const msg = `Missing Firebase env: ${missingVars.join(', ')}. Locally: apps/frontend/.env.local. On Vercel: Project → Settings → Environment Variables (all keys for Production).`;
   if (process.env.NODE_ENV === 'production') {
     throw new Error(msg);
   }
