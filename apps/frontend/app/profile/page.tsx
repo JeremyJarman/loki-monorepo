@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
@@ -83,12 +83,10 @@ function ProfilePageInner() {
     loadProfile();
   }, [loadProfile]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (loading || !user?.uid || accountOnly) return;
     const aid = profile?.artistId;
-    if (aid) {
-      router.replace(`/artists/${aid}`);
-    }
+    if (aid) router.replace(`/artists/${aid}`);
   }, [loading, user?.uid, profile?.artistId, accountOnly, router]);
 
   const startEditing = () => {
@@ -223,6 +221,14 @@ function ProfilePageInner() {
     return (
       <div className="min-h-[40vh] flex items-center justify-center">
         <p className="font-body text-text-paragraph">Loading profile…</p>
+      </div>
+    );
+  }
+
+  if (user && !accountOnly && profile?.artistId) {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <p className="font-body text-text-paragraph">Loading…</p>
       </div>
     );
   }

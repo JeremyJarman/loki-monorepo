@@ -219,17 +219,20 @@ export default function FrontendHeader({
                         onClick={() => setIsMenuOpen(false)}
                       />
                       <div className="absolute right-0 top-full mt-1 w-[200px] py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg z-50">
-                        {MENU_ITEMS.map(({ href, label, icon: Icon }) => (
-                          <Link
-                            key={href}
-                            href={href}
-                            onClick={() => setIsMenuOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm font-body text-neutral dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-primary transition-colors"
-                          >
-                            <Icon className="w-4 h-4" />
-                            {label}
-                          </Link>
-                        ))}
+                        {MENU_ITEMS.map(({ href, label, icon: Icon }) => {
+                          const itemHref = href === '/profile' ? profileNavHref : href;
+                          return (
+                            <Link
+                              key={href}
+                              href={itemHref}
+                              onClick={() => setIsMenuOpen(false)}
+                              className="flex items-center gap-2 px-4 py-2.5 text-sm font-body text-neutral dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-primary transition-colors"
+                            >
+                              <Icon className="w-4 h-4" />
+                              {label}
+                            </Link>
+                          );
+                        })}
                       </div>
                     </>
                   )}

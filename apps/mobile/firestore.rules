@@ -65,6 +65,12 @@ service cloud.firestore {
       }
     }
 
+    // Collection-group queries on `event_rsvp` (e.g. Discover global attendance) must match this
+    // path pattern explicitly; nested rules alone can still yield PERMISSION_DENIED for collectionGroup().
+    match /{path=**}/event_rsvp/{rsvpUserId} {
+      allow read, write: if request.auth != null;
+    }
+
     // Admin-managed collections: public read, write only for admin users
     // Admin users have role 'admin' or 'superadmin' in users/{uid}
     function isAdmin() {
@@ -124,7 +130,7 @@ service cloud.firestore {
         allow create: if request.auth != null
           && request.resource.data.author.userId == request.auth.uid;
         allow delete: if request.auth != null
-          && resource.data.author.userId == request.auth.uid;
+          && (resource.data.author.userId == request.auth.uid || isAdmin());
         allow update: if false;
       }
     }

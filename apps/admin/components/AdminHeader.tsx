@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: '/ai-test', label: 'Create Venue' },
   { href: '/events', label: 'Events' },
   { href: '/specials', label: 'Specials' },
+  { href: '/event-comments', label: 'Event comments' },
   { href: '/users', label: 'Users' },
 ];
 
