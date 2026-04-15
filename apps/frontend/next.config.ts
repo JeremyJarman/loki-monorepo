@@ -32,15 +32,27 @@ function loadEnvLocal() {
 }
 loadEnvLocal();
 
-const nextConfig: NextConfig = {
-  env: {
-    NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  },
-};
+/** NEXT_PUBLIC_* is inlined at build time; missing values on Vercel = broken client bundle. */
+const REQUIRED_PUBLIC_FIREBASE = [
+  "NEXT_PUBLIC_FIREBASE_API_KEY",
+  "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
+  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+  "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+  "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
+  "NEXT_PUBLIC_FIREBASE_APP_ID",
+] as const;
+if (process.env.VERCEL) {
+  const missing = REQUIRED_PUBLIC_FIREBASE.filter((k) => !process.env[k]?.trim());
+  if (missing.length > 0) {
+    throw new Error(
+      `Vercel build: set these in Project → Settings → Environment Variables, enable them for this deployment type (Production vs Preview), then redeploy: ${missing.join(", ")}`
+    );
+  }
+}
+
+// Do not list NEXT_PUBLIC_* in `env` here: that snapshots values when this file loads.
+// Next inlines process.env.NEXT_PUBLIC_* during compilation; a premature undefined would
+// ship empty strings to the browser on Vercel.
+const nextConfig: NextConfig = {};
 
 export default nextConfig;
