@@ -41,7 +41,7 @@
   "space_amenities": [
     "outdoor_seating", "rooftop", "fireplace", "private_dining",
     "air_conditioning", "heating", "cloakroom", "charging_outlets",
-    "high_chairs", "luggage_storage"
+    "high_chairs", "luggage_storage", "pool_tables", "dart_boards"
   ],
   "accessibility": [
     "wheelchair_accessible", "wheelchair_accessible_toilet", "step_free_access"

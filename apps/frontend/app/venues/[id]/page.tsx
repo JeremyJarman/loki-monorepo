@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Venue, TimeRange, Experience, MenuSection, MenuItem } from '@loki/shared';
 import { formatTagForDisplay } from '@/lib/venueTags';
@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { ArtistGigCard, type ArtistGigCardModel } from '@/components/ArtistGigCard';
 
 /** Image carousel for venue profile; same width as card. Swipeable on touch. */
 function VenueImageCarousel({
@@ -269,6 +270,8 @@ type TabId = 'about' | 'menu' | 'specials' | 'events';
 
 const VALID_TABS: TabId[] = ['about', 'menu', 'specials', 'events'];
 
+type VenueEventInstance = ArtistGigCardModel;
+
 function parseTab(value: string | null): TabId {
   if (value && VALID_TABS.includes(value as TabId)) return value as TabId;
   return 'about';
@@ -280,6 +283,7 @@ export default function VenueProfilePage() {
   const venueId = params.id as string;
   const [venue, setVenue] = useState<Venue | null>(null);
   const [specials, setSpecials] = useState<Experience[]>([]);
+  const [venueEvents, setVenueEvents] = useState<VenueEventInstance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>(() => parseTab(searchParams.get('tab')));
@@ -333,13 +337,20 @@ export default function VenueProfilePage() {
     }
     (async () => {
       try {
-        const [venueSnap, experiencesSnap] = await Promise.all([
+        const [venueSnap, experiencesSnap, eventInstancesSnap] = await Promise.all([
           getDoc(doc(db, 'venues', venueId)),
           getDocs(
             query(
               collection(db, 'experiences'),
               where('venueId', '==', venueId),
               where('type', '==', 'special')
+            )
+          ),
+          getDocs(
+            query(
+              collection(db, 'experienceInstances'),
+              where('venueId', '==', venueId),
+              where('type', '==', 'event')
             )
           ),
         ]);
@@ -378,6 +389,88 @@ export default function VenueProfilePage() {
           list.push({ id: d.id, ...d.data() } as Experience);
         });
         setSpecials(list);
+        const loadedEvents: VenueEventInstance[] = eventInstancesSnap.docs
+          .map((d) => {
+            const eventData = d.data() as {
+              experienceId?: string;
+              title?: string;
+              startAt?: Timestamp;
+            };
+            const startAt = eventData.startAt instanceof Timestamp ? eventData.startAt.toDate() : new Date(0);
+            return {
+              instanceId: d.id,
+              title: eventData.title?.trim() || 'Untitled event',
+              venueName: v.name || 'Venue',
+              venueId: venueId || null,
+              venueAddress: v.address,
+              startAt,
+              genre: undefined,
+              cost: null,
+              imageUrl: null,
+              bookingRequired: false,
+              bookingLink: null,
+              isPast: startAt.getTime() < Date.now(),
+            };
+          });
+
+        const eventExperienceIds = [
+          ...new Set(
+            eventInstancesSnap.docs
+              .map((d) => (d.data() as { experienceId?: string }).experienceId)
+              .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+          ),
+        ];
+        const experienceById = new Map<string, Record<string, unknown>>();
+        if (eventExperienceIds.length > 0) {
+          const allExperiencesSnap = await getDocs(collection(db, 'experiences'));
+          allExperiencesSnap.docs.forEach((expDoc) => {
+            if (!eventExperienceIds.includes(expDoc.id)) return;
+            experienceById.set(expDoc.id, expDoc.data() as Record<string, unknown>);
+          });
+        }
+
+        const enrichedEvents: VenueEventInstance[] = eventInstancesSnap.docs.map((d) => {
+          const eventData = d.data() as {
+            experienceId?: string;
+            title?: string;
+            startAt?: Timestamp;
+          };
+          const expId =
+            typeof eventData.experienceId === 'string' ? eventData.experienceId : '';
+          const exp = expId ? experienceById.get(expId) : undefined;
+          const startAt = eventData.startAt instanceof Timestamp ? eventData.startAt.toDate() : new Date(0);
+
+          const rawCost = exp?.cost;
+          const parsedCost =
+            typeof rawCost === 'number'
+              ? rawCost
+              : typeof rawCost === 'string'
+                ? Number.parseFloat(rawCost)
+                : null;
+
+          return {
+            instanceId: d.id,
+            title: eventData.title?.trim() || 'Untitled event',
+            venueName: v.name || 'Venue',
+            venueId: venueId || null,
+            venueAddress: v.address,
+            startAt,
+            genre: typeof exp?.genre === 'string' ? exp.genre : undefined,
+            cost: Number.isFinite(parsedCost as number) ? parsedCost : null,
+            imageUrl: typeof exp?.imageUrl === 'string' ? exp.imageUrl : null,
+            bookingRequired: Boolean(exp?.bookingRequired),
+            bookingLink:
+              typeof exp?.bookingLink === 'string' && exp.bookingLink.trim()
+                ? exp.bookingLink.trim()
+                : null,
+            isPast: startAt.getTime() < Date.now(),
+          };
+        });
+
+        const sortedEvents = (enrichedEvents.length > 0 ? enrichedEvents : loadedEvents).sort(
+          (a, b) => a.startAt.getTime() - b.startAt.getTime()
+        );
+        setVenueEvents(sortedEvents);
       } catch (err) {
         console.error(err);
         setError('Failed to load venue');
@@ -465,87 +558,88 @@ export default function VenueProfilePage() {
       </header>
 
       <div className="w-full max-w-4xl mx-auto px-2 sm:px-4 pt-4 relative z-10">
-        {/* Image carousel at top of card (same width as card) */}
-        {carouselImages.length > 0 && (
-          <VenueImageCarousel
-            images={carouselImages}
-            isDark={effectiveDark}
-            className={`rounded-t-xl overflow-hidden border-x border-t shadow-sm ${effectiveDark ? 'border-neutral-600' : 'border-neutral-200'}`}
-          />
-        )}
-        {/* Info section */}
-        <section
-          className={`p-4 border-x border-b-0 ${effectiveDark ? 'bg-[#1e1e1e] border-neutral-600' : 'bg-white border-neutral-200'} ${carouselImages.length > 0 ? '' : 'rounded-t-xl border-t shadow-sm'}`}
-        >
-          <h1 className={`text-lg font-heading font-bold ${effectiveDark ? 'text-white' : 'text-neutral'}`}>{venue.name}</h1>
-          {cuisineLabel && (
-            <p className={`text-sm mt-0.5 ${effectiveDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{cuisineLabel}</p>
+        <div className={`rounded-xl border overflow-hidden mb-6 shadow-sm ${effectiveDark ? 'bg-[#1e1e1e] border-neutral-600' : 'bg-white border-neutral-200'}`}>
+          {/* Image carousel at top of card (same width as card) */}
+          {carouselImages.length > 0 && (
+            <VenueImageCarousel
+              images={carouselImages}
+              isDark={effectiveDark}
+            />
           )}
-          {venue.address && (
-            <>
-              <p className={`text-xs mt-2 ${effectiveDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{venue.address}</p>
-              {mapUrl && (
-                <a
-                  href={mapUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`text-xs inline-flex items-center gap-1 mt-1 ${effectiveDark ? 'text-emerald-400 hover:underline' : 'text-primary hover:underline'}`}
-                >
-                  <MapPin className="w-3.5 h-3.5" /> View on map
+          {/* Info section */}
+          <section className={`p-4 ${carouselImages.length > 0 ? (effectiveDark ? 'border-t border-neutral-600' : 'border-t border-neutral-200') : ''}`}>
+            <h1 className={`text-lg font-heading font-bold ${effectiveDark ? 'text-white' : 'text-neutral'}`}>{venue.name}</h1>
+            {cuisineLabel && (
+              <p className={`text-sm mt-0.5 ${effectiveDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{cuisineLabel}</p>
+            )}
+            {venue.address && (
+              <>
+                <p className={`text-xs mt-2 ${effectiveDark ? 'text-neutral-400' : 'text-neutral-500'}`}>{venue.address}</p>
+                {mapUrl && (
+                  <a
+                    href={mapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`text-xs inline-flex items-center gap-1 mt-1 ${effectiveDark ? 'text-emerald-400 hover:underline' : 'text-primary hover:underline'}`}
+                  >
+                    <MapPin className="w-3.5 h-3.5" /> View on map
+                  </a>
+                )}
+              </>
+            )}
+            {venue.phone && (
+              <p className={`text-xs mt-2 ${effectiveDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                <a href={`tel:${venue.phone}`} className={effectiveDark ? 'hover:text-emerald-400' : 'hover:text-primary'}>
+                  📞 {venue.phone}
                 </a>
-              )}
-            </>
-          )}
-          {venue.phone && (
-            <p className={`text-xs mt-2 ${effectiveDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-              <a href={`tel:${venue.phone}`} className={effectiveDark ? 'hover:text-emerald-400' : 'hover:text-primary'}>
-                📞 {venue.phone}
-              </a>
-            </p>
-          )}
-          {websiteUrl && (
-            <p className={`text-xs ${effectiveDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-              <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className={effectiveDark ? 'hover:text-emerald-400' : 'hover:text-primary'}>
-                🌐 {websiteUrl.replace(/^https?:\/\//, '')}
-              </a>
-            </p>
-          )}
-          {(venue as { email?: string }).email && (
-            <p className={`text-xs ${effectiveDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
-              <a
-                href={`mailto:${(venue as { email?: string }).email}`}
-                className={effectiveDark ? 'hover:text-emerald-400' : 'hover:text-primary'}
-              >
-                📧 {(venue as { email?: string }).email}
-              </a>
-            </p>
-          )}
-        </section>
-
-        {/* Tab navigation - sticky below app header; extra top offset so not cut off */}
-        <div
-          className={`border border-t-0 sticky z-30 flex top-[4.5rem] pt-2 ${
-            effectiveDark ? 'bg-[#1e1e1e] border-neutral-600' : 'bg-white border-neutral-200'
-          }`}
-        >
-          {(['about', 'menu', 'specials', 'events'] as TabId[]).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-3 text-sm font-body font-semibold capitalize border-b-2 ${
-                activeTab === tab
-                  ? effectiveDark ? 'text-emerald-400 border-emerald-400' : 'text-primary border-primary'
-                  : effectiveDark ? 'text-neutral-400 border-transparent hover:text-neutral-200' : 'text-neutral-500 border-transparent hover:text-neutral-700'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+              </p>
+            )}
+            {websiteUrl && (
+              <p className={`text-xs ${effectiveDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className={effectiveDark ? 'hover:text-emerald-400' : 'hover:text-primary'}>
+                  🌐 {websiteUrl.replace(/^https?:\/\//, '')}
+                </a>
+              </p>
+            )}
+            {(venue as { email?: string }).email && (
+              <p className={`text-xs ${effectiveDark ? 'text-neutral-300' : 'text-neutral-600'}`}>
+                <a
+                  href={`mailto:${(venue as { email?: string }).email}`}
+                  className={effectiveDark ? 'hover:text-emerald-400' : 'hover:text-primary'}
+                >
+                  📧 {(venue as { email?: string }).email}
+                </a>
+              </p>
+            )}
+          </section>
         </div>
 
-        {/* Tab content */}
-        <div className={`border border-t-0 rounded-b-xl shadow-sm min-h-[200px] ${effectiveDark ? 'bg-[#1e1e1e] border-neutral-600' : 'bg-white border-neutral-200'}`}>
+        {/* Tab navigation on page background (separate from content card) */}
+        <div className={`sticky z-30 top-[4.5rem] mb-4 ${effectiveDark ? 'bg-[#121212]' : 'bg-[#FDF8F6]'}`}>
+          <div className={`flex gap-2 border-b ${effectiveDark ? 'border-neutral-700' : 'border-neutral-200'}`}>
+            {(['about', 'menu', 'specials', 'events'] as TabId[]).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-body font-semibold capitalize border-b-2 -mb-px transition-colors ${
+                  activeTab === tab
+                    ? effectiveDark
+                      ? 'text-emerald-400 border-emerald-400'
+                      : 'text-primary border-primary'
+                    : effectiveDark
+                      ? 'text-neutral-400 border-transparent hover:text-neutral-200'
+                      : 'text-neutral-500 border-transparent hover:text-neutral-700'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tab content in its own container */}
+        <div className={`rounded-xl border shadow-sm min-h-[200px] overflow-hidden ${effectiveDark ? 'bg-[#1e1e1e] border-neutral-600' : 'bg-white border-neutral-200'}`}>
           {activeTab === 'about' && (
             <div className="p-4 space-y-6 font-body">
               {venue.introduction && (
@@ -722,8 +816,20 @@ export default function VenueProfilePage() {
           )}
 
           {activeTab === 'events' && (
-            <div className="p-4">
-              <p className={`text-xs ${effectiveDark ? 'text-neutral-500' : 'text-neutral-500'}`}>Events tab coming soon.</p>
+            <div className="divide-y divide-neutral-200 dark:divide-neutral-700">
+              {venueEvents.length === 0 ? (
+                <p className="p-6 font-body text-sm text-text-paragraph">No events scheduled for this venue right now.</p>
+              ) : (
+                venueEvents.map((eventItem) => (
+                  <ArtistGigCard
+                    key={eventItem.instanceId}
+                    gig={eventItem}
+                    appearance="row"
+                    currency={venue.currency || 'GBP'}
+                    eventHref={`/events/${eventItem.instanceId}?returnTo=${encodeURIComponent(`/venues/${venueId}?tab=events`)}`}
+                  />
+                ))
+              )}
             </div>
           )}
         </div>

@@ -7,7 +7,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/experience_instance_model.dart';
 import '../models/experience_model.dart';
 import '../models/venue_model.dart';
+import '../screens/event_detail_screen.dart';
 import '../screens/venue_profile_screen.dart';
+import '../services/firestore_service.dart';
 
 class ExperienceInstanceCard extends StatefulWidget {
   final ExperienceInstanceModel instance;
@@ -29,6 +31,7 @@ class ExperienceInstanceCard extends StatefulWidget {
 
 class _ExperienceInstanceCardState extends State<ExperienceInstanceCard> {
   bool _isDescriptionExpanded = false;
+  final FirestoreService _firestoreService = FirestoreService();
 
   Widget _buildNoImagePlaceholder() {
     return Container(
@@ -67,6 +70,19 @@ class _ExperienceInstanceCardState extends State<ExperienceInstanceCard> {
     }
   }
 
+  void _navigateToEventDetail() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EventDetailScreen(
+          instance: widget.instance,
+          experience: widget.experience,
+          venue: widget.venue,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final imageUrl = widget.experience?.imageUrl;
@@ -78,9 +94,12 @@ class _ExperienceInstanceCardState extends State<ExperienceInstanceCard> {
       debugPrint('ExperienceInstanceCard[${widget.instance.instanceId}]: experience=${widget.experience?.experienceId}, imageUrl=$imageUrl');
     }
 
-    return Card(
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: _navigateToEventDetail,
+      child: Card(
       margin: EdgeInsets.zero,
-      elevation: 4,
+      elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,16 +183,16 @@ class _ExperienceInstanceCardState extends State<ExperienceInstanceCard> {
                 ),
                 const SizedBox(height: 8),
 
-                // Venue Name (if available) - White, bold, clickable, larger
+                // Venue Name (if available)
                 if (widget.venue != null) ...[
                   InkWell(
                     onTap: _navigateToVenueProfile,
                     child: Text(
                       widget.venue!.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -189,6 +208,31 @@ class _ExperienceInstanceCardState extends State<ExperienceInstanceCard> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                const SizedBox(height: 6),
+                StreamBuilder<int>(
+                  stream: _firestoreService
+                      .getEventCommentCountStream(widget.instance.instanceId),
+                  builder: (context, snapshot) {
+                    final count = snapshot.data ?? 0;
+                    return Row(
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 16,
+                          color: Theme.of(context).textTheme.bodySmall?.color,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$count comments',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Theme.of(context).textTheme.bodySmall?.color,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
 
                 // Cost
                 const SizedBox(height: 8),
@@ -199,6 +243,19 @@ class _ExperienceInstanceCardState extends State<ExperienceInstanceCard> {
                     color: Theme.of(context).textTheme.bodySmall?.color,
                     fontWeight: FontWeight.w500,
                   ),
+                ),
+
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    if ((widget.experience?.genre ?? '').trim().isNotEmpty)
+                      _InstancePill(label: widget.experience!.genre!.trim()),
+                    if (widget.experience?.bookingRequired == true)
+                      const _InstancePill(label: 'Booking required'),
+                    const _InstancePill(label: 'View details'),
+                  ],
                 ),
 
                 if (widget.instance.type == 'event' &&
@@ -301,6 +358,31 @@ class _ExperienceInstanceCardState extends State<ExperienceInstanceCard> {
             ),
           ),
         ],
+      ),
+    ));
+  }
+}
+
+class _InstancePill extends StatelessWidget {
+  final String label;
+  const _InstancePill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).textTheme.bodySmall?.color,
+        ),
       ),
     );
   }

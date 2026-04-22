@@ -45,7 +45,9 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
               ? 'w-full py-6'
               : isArtistManagePage
                 ? 'w-full py-6 px-4 sm:px-6 lg:px-8'
-                : 'max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8'
+                : isArtistPublicPage
+                  ? 'max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8'
+                  : 'max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8'
           }
         >
           <RequireAuth>{children}</RequireAuth>

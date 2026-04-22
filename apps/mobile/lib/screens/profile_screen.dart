@@ -296,14 +296,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       stream: _firestoreService.getUserLists(user.uid),
                       builder: (context, listsSnapshot) {
                         final listsCount = listsSnapshot.data?.length ?? 0;
-                        return Row(
-                          children: [
-                            _buildStat(_formatCount(listsCount), 'Lists'),
-                            const SizedBox(width: 16),
-                            _buildStat(_formatCount(user.followersCount), 'Followers'),
-                            const SizedBox(width: 16),
-                            _buildStat(_formatCount(user.followingCount), 'Following'),
-                          ],
+                        return StreamBuilder<int>(
+                          stream: _firestoreService.getFollowersCountStream(user.uid),
+                          builder: (context, followersSnapshot) {
+                            final followersCount =
+                                followersSnapshot.data ?? user.followersCount;
+                            return StreamBuilder<int>(
+                              stream: _firestoreService.getFollowingCountStream(user.uid),
+                              builder: (context, followingSnapshot) {
+                                final followingCount =
+                                    followingSnapshot.data ?? user.followingCount;
+                                return Row(
+                                  children: [
+                                    _buildStat(_formatCount(listsCount), 'Lists'),
+                                    const SizedBox(width: 16),
+                                    _buildStat(_formatCount(followersCount), 'Followers'),
+                                    const SizedBox(width: 16),
+                                    _buildStat(_formatCount(followingCount), 'Following'),
+                                  ],
+                                );
+                              },
+                            );
+                          },
                         );
                       },
                     ),

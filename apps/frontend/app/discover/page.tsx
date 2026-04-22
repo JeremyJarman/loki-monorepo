@@ -1,21 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
-import { EventCard } from '@/components/EventCard';
-import type { EventCardItem, EventAttendanceState } from '@/components/EventCard';
+import { MediumEventCard } from '@/components/MediumEventCard';
 import { ArtistCard } from '@/components/ArtistCard';
-import { SaveToListModal } from '@/components/SaveToListModal';
 import { getUpcomingEvents, type EventPreviewItem } from '@/lib/events';
 import { getAllArtists, type ArtistPreview } from '@/lib/artists';
-import { getUserProfile } from '@/lib/userProfile';
-import type { UserRef } from '@loki/shared';
 import { DISCOVER_GENRE_OPTIONS, ARTIST_DESCRIPTOR_OPTIONS } from '@loki/shared';
-import {
-  loadDefaultInterestedAttendanceMap,
-  syncDefaultInterestedListAttendance,
-} from '@/lib/defaultInterestedListAttendance';
 import { getGlobalEventAttendanceCounts } from '@/lib/lists';
 import type { EventAttendanceCounts } from '@/components/EventCard';
 import {
@@ -121,7 +112,6 @@ function formatCalendarDayHeading(dateKey: string): string {
 
 export default function DiscoverPage() {
   const { user } = useAuth();
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<DiscoverTab>('events');
   const [items, setItems] = useState<EventPreviewItem[]>([]);
   const [artists, setArtists] = useState<ArtistPreview[]>([]);
@@ -134,13 +124,8 @@ export default function DiscoverPage() {
   const [priceFilter, setPriceFilter] = useState<PriceFilterId>('any');
   const [keyword, setKeyword] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [saveModalOpen, setSaveModalOpen] = useState(false);
-  const [saveModalEvent, setSaveModalEvent] = useState<EventCardItem | null>(null);
+  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
   const scrollSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [authorRef, setAuthorRef] = useState<UserRef | null>(null);
-  const [attendanceByInstance, setAttendanceByInstance] = useState<Record<string, EventAttendanceState>>({});
-  const [attendanceLoading, setAttendanceLoading] = useState(false);
-  const [busyInstanceId, setBusyInstanceId] = useState<string | null>(null);
   const [globalAttendanceByInstance, setGlobalAttendanceByInstance] = useState<Record<string, EventAttendanceCounts>>({});
   const [calendarFocus, setCalendarFocus] = useState<{ year: number; month: number }>(() => {
     const n = new Date();
@@ -177,6 +162,15 @@ export default function DiscoverPage() {
   }, []);
 
   useEffect(() => {
+    const onCompactCheck = () => {
+      setIsHeaderCompact(window.scrollY > 72);
+    };
+    window.addEventListener('scroll', onCompactCheck, { passive: true });
+    onCompactCheck();
+    return () => window.removeEventListener('scroll', onCompactCheck);
+  }, []);
+
+  useEffect(() => {
     if (!user) {
       setLoading(false);
       return;
@@ -202,42 +196,6 @@ export default function DiscoverPage() {
     })();
     return () => { cancelled = true; };
   }, [user]);
-
-  useEffect(() => {
-    if (!user?.uid) {
-      setAuthorRef(null);
-      return;
-    }
-    getUserProfile(user.uid).then((profile) => {
-      setAuthorRef({
-        userId: user.uid,
-        displayName: profile?.displayName ?? profile?.username ?? user.email ?? undefined,
-        profileImageUrl: profile?.profileImageUrl ?? undefined,
-      });
-    });
-  }, [user?.uid, user?.email]);
-
-  useEffect(() => {
-    if (!user?.uid || items.length === 0) {
-      setAttendanceByInstance({});
-      setAttendanceLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setAttendanceLoading(true);
-    loadDefaultInterestedAttendanceMap(user.uid, items.map((i) => i.instanceId))
-      .then((m) => {
-        if (!cancelled) setAttendanceByInstance(m);
-      })
-      .catch((e) => {
-        console.error(e);
-        if (!cancelled) setAttendanceByInstance({});
-      })
-      .finally(() => {
-        if (!cancelled) setAttendanceLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [user?.uid, items]);
 
   useEffect(() => {
     if (items.length === 0) {
@@ -339,24 +297,10 @@ export default function DiscoverPage() {
 
   const eventTabActive = activeTab === 'events' || activeTab === 'calendar';
 
-  const handleDiscoverAttendance = async (item: EventPreviewItem, next: EventAttendanceState) => {
-    if (!user?.uid || !authorRef) return;
-    setBusyInstanceId(item.instanceId);
-    try {
-      await syncDefaultInterestedListAttendance(user.uid, authorRef, item, next);
-      setAttendanceByInstance((prev) => {
-        const copy = { ...prev };
-        if (!next.interested && !next.going) delete copy[item.instanceId];
-        else copy[item.instanceId] = next;
-        return copy;
-      });
-      const fresh = await getGlobalEventAttendanceCounts([item.instanceId]);
-      setGlobalAttendanceByInstance((prev) => ({ ...prev, ...fresh }));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setBusyInstanceId(null);
-    }
+  const eventDetailHref = (item: EventPreviewItem) => {
+    const params = new URLSearchParams();
+    params.set('returnTo', '/discover');
+    return `/events/${item.instanceId}?${params.toString()}`;
   };
 
   if (loading) {
@@ -377,13 +321,13 @@ export default function DiscoverPage() {
 
   return (
     <div>
-      <div className="sticky top-[4.5rem] z-40 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-1 pb-3 space-y-3 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-700 shadow-sm">
+      <div className={`sticky top-[4.5rem] z-40 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-700 shadow-sm ${isHeaderCompact ? 'pt-1 pb-1 space-y-1' : 'pt-1 pb-2 space-y-2'}`}>
       {/* Tab switcher */}
       <div className="flex flex-wrap gap-x-1 gap-y-0 border-b border-neutral-200 dark:border-neutral-700">
         <button
           type="button"
           onClick={() => setActiveTab('events')}
-          className={`px-4 py-2 font-body font-semibold text-sm border-b-2 -mb-px transition-colors ${
+          className={`px-4 py-1.5 font-body font-semibold text-sm border-b-2 -mb-px transition-colors ${
             activeTab === 'events'
               ? 'text-primary dark:text-emerald-400 border-primary dark:border-emerald-400'
               : 'text-neutral-500 dark:text-neutral-400 border-transparent hover:text-neutral-700 dark:hover:text-neutral-300'
@@ -400,7 +344,7 @@ export default function DiscoverPage() {
             }
             setActiveTab('calendar');
           }}
-          className={`px-4 py-2 font-body font-semibold text-sm border-b-2 -mb-px transition-colors ${
+          className={`px-4 py-1.5 font-body font-semibold text-sm border-b-2 -mb-px transition-colors ${
             activeTab === 'calendar'
               ? 'text-primary dark:text-emerald-400 border-primary dark:border-emerald-400'
               : 'text-neutral-500 dark:text-neutral-400 border-transparent hover:text-neutral-700 dark:hover:text-neutral-300'
@@ -411,7 +355,7 @@ export default function DiscoverPage() {
         <button
           type="button"
           onClick={() => setActiveTab('artists')}
-          className={`px-4 py-2 font-body font-semibold text-sm border-b-2 -mb-px transition-colors ${
+          className={`px-4 py-1.5 font-body font-semibold text-sm border-b-2 -mb-px transition-colors ${
             activeTab === 'artists'
               ? 'text-primary dark:text-emerald-400 border-primary dark:border-emerald-400'
               : 'text-neutral-500 dark:text-neutral-400 border-transparent hover:text-neutral-700 dark:hover:text-neutral-300'
@@ -419,9 +363,26 @@ export default function DiscoverPage() {
         >
           Artists
         </button>
+        {isHeaderCompact && (
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((o) => !o)}
+            className={`px-4 py-1.5 font-body font-semibold text-sm border-b-2 -mb-px transition-colors inline-flex items-center gap-1.5 ${
+              filtersOpen
+                ? 'text-primary dark:text-emerald-400 border-primary dark:border-emerald-400'
+                : 'text-neutral-500 dark:text-neutral-400 border-transparent hover:text-neutral-700 dark:hover:text-neutral-300'
+            }`}
+            aria-expanded={filtersOpen}
+            aria-controls="discover-filters-panel-compact"
+          >
+            <SlidersHorizontal className="w-4 h-4" aria-hidden />
+            Filters
+          </button>
+        )}
       </div>
 
       {/* Filters (collapsible) */}
+      {!isHeaderCompact && (
       <div className="rounded-xl border border-neutral-light dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
         <button
           type="button"
@@ -451,7 +412,7 @@ export default function DiscoverPage() {
           />
         </button>
         {filtersOpen && (
-          <div className="px-4 pb-4 border-t border-neutral-light dark:border-neutral-700">
+          <div id="discover-filters-panel-desktop" className="px-4 pb-4 border-t border-neutral-light dark:border-neutral-700">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 pt-4">
               {eventTabActive && (
                 <>
@@ -574,6 +535,133 @@ export default function DiscoverPage() {
           </div>
         )}
       </div>
+      )}
+
+      {isHeaderCompact && filtersOpen && (
+        <div id="discover-filters-panel-compact" className="rounded-xl border border-neutral-light dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
+          <div className="px-4 pb-4 pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+              {eventTabActive && (
+                <>
+                  <div>
+                    <label htmlFor="discover-when-compact" className="block text-sm font-medium text-neutral dark:text-neutral-200 mb-1.5">When</label>
+                    <select
+                      id="discover-when-compact"
+                      value={timeFilterIndex}
+                      onChange={(e) => setTimeFilterIndex(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 text-sm"
+                    >
+                      {TIME_FILTERS.map((opt, i) => (
+                        <option key={i} value={i}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="discover-genre-compact" className="block text-sm font-medium text-neutral dark:text-neutral-200 mb-1.5">Genre</label>
+                    <select
+                      id="discover-genre-compact"
+                      value={genre}
+                      onChange={(e) => setGenre(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 text-sm"
+                    >
+                      <option value="">All genres</option>
+                      {DISCOVER_GENRE_OPTIONS.map((g) => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="discover-booking-compact" className="block text-sm font-medium text-neutral dark:text-neutral-200 mb-1.5">
+                      Booking
+                    </label>
+                    <select
+                      id="discover-booking-compact"
+                      value={bookingFilter}
+                      onChange={(e) => setBookingFilter(e.target.value as BookingFilterId)}
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 text-sm"
+                    >
+                      {BOOKING_FILTERS.map((b) => (
+                        <option key={b.id} value={b.id}>{b.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="discover-price-compact" className="block text-sm font-medium text-neutral dark:text-neutral-200 mb-1.5">
+                      Price
+                    </label>
+                    <select
+                      id="discover-price-compact"
+                      value={priceFilter}
+                      onChange={(e) => setPriceFilter(e.target.value as PriceFilterId)}
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 text-sm"
+                    >
+                      {PRICE_FILTERS.map((p) => (
+                        <option key={p.id} value={p.id}>{p.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+              {!eventTabActive && (
+                <>
+                  <div>
+                    <label htmlFor="discover-artists-genre-compact" className="block text-sm font-medium text-neutral dark:text-neutral-200 mb-1.5">
+                      Genre
+                    </label>
+                    <select
+                      id="discover-artists-genre-compact"
+                      value={genre}
+                      onChange={(e) => setGenre(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 text-sm"
+                    >
+                      <option value="">All genres</option>
+                      {DISCOVER_GENRE_OPTIONS.map((g) => (
+                        <option key={g} value={g}>
+                          {g}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="discover-artists-style-compact" className="block text-sm font-medium text-neutral dark:text-neutral-200 mb-1.5">
+                      Style
+                    </label>
+                    <select
+                      id="discover-artists-style-compact"
+                      value={artistStyle}
+                      onChange={(e) => setArtistStyle(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 text-sm"
+                    >
+                      <option value="">All styles</option>
+                      {ARTIST_DESCRIPTOR_OPTIONS.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+              <div className={eventTabActive ? 'sm:col-span-2 xl:col-span-1' : ''}>
+                <label htmlFor="discover-search-compact" className="block text-sm font-medium text-neutral dark:text-neutral-200 mb-1.5">Search</label>
+                <input
+                  id="discover-search-compact"
+                  type="search"
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder={eventTabActive ? 'e.g. artist, venue, electronic' : 'e.g. artist name, genre'}
+                  className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 text-sm placeholder-neutral-400"
+                />
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-text-paragraph dark:text-neutral-400">
+              {eventTabActive
+                ? `${filteredItems.length} of ${items.length} events`
+                : `${filteredArtists.length} of ${artists.length} artists`}
+            </p>
+          </div>
+        </div>
+      )}
       </div>
 
       <div className="space-y-6 pt-6">
@@ -587,31 +675,14 @@ export default function DiscoverPage() {
               No events match the current filters. Try changing when, genre, booking, price, or search.
             </p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 min-w-0 w-full">
+            <div className="space-y-6 min-w-0 w-full">
               {filteredItems.map((item) => (
-                <EventCard
+                <MediumEventCard
                   key={item.instanceId}
                   item={item}
                   returnTo="/discover"
-                  commentsAuthorRef={authorRef}
-                  commentsCurrentUserId={user?.uid ?? null}
-                  commentsLoginReturnTo="/discover"
-                  attendance={
-                    user && (attendanceLoading || !authorRef)
-                      ? null
-                      : (attendanceByInstance[item.instanceId] ?? { interested: false, going: false })
-                  }
-                  onAttendanceChange={
-                    !user
-                      ? () => { router.push('/login?returnTo=/discover'); }
-                      : (next) => { void handleDiscoverAttendance(item, next); }
-                  }
-                  attendanceBusy={busyInstanceId === item.instanceId}
                   attendanceCounts={globalAttendanceByInstance[item.instanceId] ?? null}
-                  onSave={(event) => {
-                    setSaveModalEvent(event);
-                    setSaveModalOpen(true);
-                  }}
+                  detailHref={eventDetailHref(item)}
                 />
               ))}
             </div>
@@ -649,31 +720,14 @@ export default function DiscoverPage() {
                       {(filteredByDay.get(selectedCalendarDay) ?? []).length === 0 ? (
                         <p className="font-body text-text-paragraph">No events on this day with the current filters.</p>
                       ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 min-w-0 w-full">
+                        <div className="space-y-6 min-w-0 w-full">
                           {(filteredByDay.get(selectedCalendarDay) ?? []).map((item) => (
-                            <EventCard
+                            <MediumEventCard
                               key={item.instanceId}
                               item={item}
                               returnTo="/discover"
-                              commentsAuthorRef={authorRef}
-                              commentsCurrentUserId={user?.uid ?? null}
-                              commentsLoginReturnTo="/discover"
-                              attendance={
-                                user && (attendanceLoading || !authorRef)
-                                  ? null
-                                  : (attendanceByInstance[item.instanceId] ?? { interested: false, going: false })
-                              }
-                              onAttendanceChange={
-                                !user
-                                  ? () => { router.push('/login?returnTo=/discover'); }
-                                  : (next) => { void handleDiscoverAttendance(item, next); }
-                              }
-                              attendanceBusy={busyInstanceId === item.instanceId}
                               attendanceCounts={globalAttendanceByInstance[item.instanceId] ?? null}
-                              onSave={(event) => {
-                                setSaveModalEvent(event);
-                                setSaveModalOpen(true);
-                              }}
+                              detailHref={eventDetailHref(item)}
                             />
                           ))}
                         </div>
@@ -711,11 +765,6 @@ export default function DiscoverPage() {
 
       </div>
 
-      <SaveToListModal
-        isOpen={saveModalOpen}
-        onClose={() => { setSaveModalOpen(false); setSaveModalEvent(null); }}
-        event={saveModalEvent}
-      />
     </div>
   );
 }

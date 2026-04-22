@@ -79,7 +79,7 @@ export function ArtistGigCard({
         aria-label={`View ${gig.title}`}
       />
       <div className="relative z-10 flex gap-3 sm:gap-4 w-full min-w-0 items-stretch pointer-events-none">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 relative">
           {gig.imageUrl ? (
             <img
               src={gig.imageUrl}
@@ -91,19 +91,24 @@ export function ArtistGigCard({
               <Music2 className="w-10 h-10 sm:w-12 sm:h-12 text-neutral-400 dark:text-neutral-500" />
             </div>
           )}
+          {gig.isPast && (
+            <span className="absolute bottom-2 left-2 inline-block px-2 py-0.5 text-xs rounded-full bg-neutral-900/80 text-white font-medium">
+              Past event
+            </span>
+          )}
         </div>
         <div className="min-w-0 flex-1 flex flex-col justify-between gap-2">
           <div className="space-y-1 min-w-0">
-            <h3 className="font-heading font-bold text-lg sm:text-xl text-neutral dark:text-neutral-100 leading-snug line-clamp-2">
+            <h3 className="font-heading font-bold text-lg sm:text-xl text-neutral dark:text-neutral-100 leading-snug truncate">
               {gig.title}
             </h3>
             <div className="flex items-start gap-1.5 text-sm font-body text-text-paragraph dark:text-neutral-400">
               <MapPin className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
-              <span className="min-w-0 line-clamp-2">{gig.venueName}</span>
+              <span className="min-w-0 truncate">{gig.venueName}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-sm font-medium font-body text-primary">
+            <div className="flex items-center gap-1.5 text-sm font-medium font-body text-primary min-w-0">
               <Calendar className="w-4 h-4 shrink-0 opacity-90" aria-hidden />
-              <span>{formatDate(gig.startAt)}</span>
+              <span className="truncate">{formatDate(gig.startAt)}</span>
             </div>
             {rsvpTotals != null && (
               <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs font-body text-text-paragraph dark:text-neutral-400">
@@ -118,11 +123,6 @@ export function ArtistGigCard({
               </p>
             )}
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
-              {gig.isPast && (
-                <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-neutral-100 font-medium">
-                  Past event
-                </span>
-              )}
               {gig.genre && (
                 <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300">
                   {gig.genre}

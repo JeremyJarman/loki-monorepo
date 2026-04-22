@@ -333,7 +333,7 @@ export default function ArtistProfilePage() {
 
       <section>
         <div className="rounded-xl border border-neutral-light dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden mb-6">
-          <div className="relative w-full max-w-2xl mx-auto aspect-square bg-neutral-100 dark:bg-neutral-800">
+          <div className="relative w-full aspect-square bg-neutral-100 dark:bg-neutral-800">
             {upcomingGigs.length > 0 && (
               <div className="absolute top-2 right-2 z-20" aria-label={`${upcomingGigs.length} upcoming ${upcomingGigs.length === 1 ? 'gig' : 'gigs'}`}>
                 <span className="inline-flex items-center gap-1 text-xs font-body font-semibold px-2 py-1 rounded-md bg-black/85 text-white shadow-sm backdrop-blur-[2px]">

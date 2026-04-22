@@ -260,6 +260,7 @@ function EventInstanceContent() {
             <EventCard
               item={ev}
               returnTo={eventReturnTo}
+              defaultDescriptionExpanded
               commentsAuthorRef={authorRef}
               commentsCurrentUserId={user?.uid ?? null}
               commentsLoginReturnTo={eventReturnTo}

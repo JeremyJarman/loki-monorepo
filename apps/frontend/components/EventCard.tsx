@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, type MouseEvent as ReactMouseEvent } from 'react';
 import Link from 'next/link';
-import { Bookmark, Share2, MapPin, Calendar, Music2, Star, CheckCircle2, ChevronDown, X, Check, ExternalLink, MessageCircle } from 'lucide-react';
+import { Bookmark, Share2, MapPin, Calendar, Music2, Star, CheckCircle2, ChevronDown, X, Check, ExternalLink, MessageCircle, UserCheck } from 'lucide-react';
 import type { UserRef } from '@loki/shared';
 import { EventCommentsBottomSheet } from '@/components/EventCommentsBottomSheet';
 import { getEventInstanceCommentCount } from '@/lib/eventComments';
@@ -68,6 +68,10 @@ function capacityStatusLabel(status?: EventCardItem['capacityStatus']): string {
   }
 }
 
+function toGoogleCalendarDate(date: Date): string {
+  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
 export type EventAttendanceState = {
   interested: boolean;
   going: boolean;
@@ -91,6 +95,7 @@ export function EventCard({
   commentsAuthorRef,
   commentsCurrentUserId,
   commentsLoginReturnTo,
+  defaultDescriptionExpanded = false,
 }: {
   item: EventCardItem;
   onSave?: (item: EventCardItem) => void;
@@ -107,11 +112,13 @@ export function EventCard({
   commentsCurrentUserId?: string | null;
   /** Path for login returnTo when adding comments (defaults to returnTo or /discover). */
   commentsLoginReturnTo?: string;
+  /** Render description expanded initially (useful on detail pages). */
+  defaultDescriptionExpanded?: boolean;
 }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState<number | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultDescriptionExpanded);
   const [isClamped, setIsClamped] = useState(false);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
 
@@ -183,6 +190,10 @@ export function EventCard({
   };
 
   const mapsQueryUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([item.venueName, item.venueAddress].filter(Boolean).join(', '))}`;
+  const calendarText = [item.title, item.artistName].filter(Boolean).join(' · ');
+  const calendarDetails = [item.description, item.venueName, item.venueAddress].filter(Boolean).join('\n');
+  const calendarDates = `${toGoogleCalendarDate(item.startAt)}/${toGoogleCalendarDate(item.endAt)}`;
+  const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(calendarText)}&dates=${encodeURIComponent(calendarDates)}&details=${encodeURIComponent(calendarDetails)}&location=${encodeURIComponent([item.venueName, item.venueAddress].filter(Boolean).join(', '))}`;
   const eventCommentsLoginPath =
     (commentsLoginReturnTo?.trim() || returnTo?.trim() || '/discover').replace(/^(?!\/)/, '/');
   const canCommentOnInstance = Boolean(item.instanceId?.trim());
@@ -292,55 +303,78 @@ export function EventCard({
         </div>
       </div>
       <div className="p-4 min-w-0">
-        <h2 className="font-heading font-bold text-lg leading-tight min-w-0 truncate text-neutral dark:text-neutral-100">
+        <h2 className="font-heading font-bold text-lg leading-tight min-w-0 text-neutral dark:text-neutral-100">
           {item.title}
         </h2>
-        {attendanceCounts != null && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs sm:text-sm font-body text-text-paragraph">
-            <span className="inline-flex items-center gap-1.5 tabular-nums">
-              <Star className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-hidden />
-              <span>{attendanceCounts.interested} interested</span>
-            </span>
-            <span className="text-text-paragraph opacity-80 select-none" aria-hidden>
-              ·
-            </span>
-            <span className="inline-flex items-center gap-1.5 tabular-nums">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden />
-              <span>{attendanceCounts.going} going</span>
-            </span>
-          </div>
-        )}
         <div className="flex items-center gap-2 mt-2 text-sm text-text-paragraph">
           <Calendar className="w-4 h-4 shrink-0 opacity-90" />
           <span>{formatEventDateTime(item.startAt, item.venueTimezone)}</span>
         </div>
         <div className="flex items-center gap-2 mt-1 text-sm text-text-paragraph">
           <MapPin className="w-4 h-4 shrink-0 opacity-90" />
-          <span>{item.venueName}{item.venueAddress ? ` · ${item.venueAddress}` : ''}</span>
+          {item.venueId ? (
+            <Link
+              href={returnTo ? `/venues/${item.venueId}?returnTo=${encodeURIComponent(returnTo)}` : `/venues/${item.venueId}`}
+              className="hover:underline underline-offset-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {item.venueName}
+            </Link>
+          ) : (
+            <a
+              href={mapsQueryUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline underline-offset-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {item.venueName}
+            </a>
+          )}
         </div>
-        <div className="flex flex-wrap items-center gap-2 mt-2">
+        {item.venueAddress && (
+          <p className="mt-1 text-sm font-body text-text-paragraph">
+            {item.venueAddress}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-2 mt-2 text-xs sm:text-sm font-body text-text-paragraph">
           {item.genre && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-body bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300">
               <Music2 className="w-3 h-3" />
               {item.genre}
             </span>
           )}
-          {item.bookingRequired && item.bookingLink?.trim() ? (
-            <a
-              href={item.bookingLink.trim()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-body font-semibold bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-200/95 dark:text-amber-950 dark:hover:bg-amber-300/95 transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              Book here
-            </a>
-          ) : item.bookingRequired ? (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-body font-medium bg-amber-100 text-amber-900 dark:bg-amber-200/95 dark:text-amber-950">
-              Booking required
-            </span>
-          ) : null}
+          {attendanceCounts != null && (
+            <>
+              <span className="inline-flex items-center gap-1.5 tabular-nums">
+                <Star className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-hidden />
+                <span>{attendanceCounts.interested} interested</span>
+              </span>
+              <span className="text-text-paragraph opacity-80 select-none" aria-hidden>
+                ·
+              </span>
+              <span className="inline-flex items-center gap-1.5 tabular-nums">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden />
+                <span>{attendanceCounts.going} going</span>
+              </span>
+            </>
+          )}
         </div>
+        {item.bookingRequired && item.bookingLink?.trim() ? (
+          <a
+            href={item.bookingLink.trim()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-body font-semibold bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-200/95 dark:text-amber-950 dark:hover:bg-amber-300/95 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Book here
+          </a>
+        ) : item.bookingRequired ? (
+          <span className="mt-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-body font-medium bg-amber-100 text-amber-900 dark:bg-amber-200/95 dark:text-amber-950">
+            Booking required
+          </span>
+        ) : null}
         {item.bookingLink?.trim() && !item.bookingRequired && (
           <a
             href={item.bookingLink.trim()}
@@ -355,7 +389,7 @@ export function EventCard({
         )}
         {item.description && (
           <div className="font-body text-sm text-text-paragraph mt-2">
-            <p ref={descriptionRef} className={expanded ? '' : 'line-clamp-3'}>
+            <p ref={descriptionRef} className={expanded ? '' : 'line-clamp-2'}>
               {item.description}
             </p>
             {isClamped && !expanded && (
@@ -388,173 +422,173 @@ export function EventCard({
     <article className="min-w-0 w-full max-w-full rounded-xl shadow overflow-visible bg-white dark:bg-neutral-900 border border-neutral-light dark:border-neutral-700">
       {detailHref ? <Link href={detailHref} className="block">{cardContent}</Link> : cardContent}
       <div className="px-3 sm:px-4 pb-4 min-w-0">
-        <div className="my-3 border-t border-neutral-light dark:border-neutral-700" />
+        <div className="mt-2 mb-2 border-t border-neutral-light dark:border-neutral-700" />
         {showAttendance ? (
-          <div className="flex w-full min-w-0 flex-nowrap items-center gap-x-1 sm:gap-x-1.5 justify-start pb-0.5 sm:pb-0">
-            <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => onSave?.(item)}
-                className="p-1 sm:p-1.5 rounded text-neutral-500 dark:text-neutral-400 hover:text-primary shrink-0"
-                aria-label="Save to list"
-              >
-                <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleShareClick}
-                className={shareButtonClass}
-                aria-label={shareCopied ? 'Event link copied' : 'Copy link to this event'}
-              >
-                {shareCopied ? (
-                  <Check className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
-                ) : (
-                  <Share2 className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
-                )}
-              </button>
-            </div>
-            <div
-              className="relative min-w-0 max-w-[90px] sm:max-w-[106px] shrink"
-              ref={attendanceMenuRef}
-            >
+          <div className="flex w-full min-w-0 items-center pb-0.5 sm:pb-0">
+            <div className="w-1/2 grid grid-cols-4 items-center">
+              <div className="flex justify-center">
                 <button
                   type="button"
-                  disabled={attendanceBusy}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setAttendanceMenuOpen((o) => !o);
-                  }}
-                  className={`flex w-full min-w-0 max-w-full overflow-hidden items-center gap-0.5 sm:gap-1 px-1.5 py-1.5 sm:px-2.5 sm:py-2 rounded-full font-body text-xs sm:text-sm font-semibold border transition-colors disabled:opacity-50 ${
-                    goingActive
-                      ? 'border-emerald-600/70 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200'
-                      : interestedActive
-                        ? 'border-amber-500/70 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100'
-                        : 'border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-700'
-                  }`}
-                  aria-expanded={attendanceMenuOpen}
-                  aria-haspopup="menu"
-                  title={
-                    goingActive ? 'Going' : interestedActive ? 'Interested' : 'Set attendance (RSVP)'
-                  }
+                  onClick={() => onSave?.(item)}
+                  className="p-1 sm:p-1.5 rounded text-neutral-500 dark:text-neutral-400 hover:text-primary shrink-0"
+                  aria-label="Save to list"
                 >
-                  {goingActive ? (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" aria-hidden />
-                      <span className="min-w-0 flex-1 truncate text-left">Going</span>
-                    </>
-                  ) : interestedActive ? (
-                    <>
-                      <Star className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" aria-hidden />
-                      <span className="min-w-0 flex-1 truncate text-left">Interested</span>
-                    </>
+                  <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              </div>
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleShareClick}
+                  className={shareButtonClass}
+                  aria-label={shareCopied ? 'Event link copied' : 'Copy link to this event'}
+                >
+                  {shareCopied ? (
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
                   ) : (
-                    <>
-                      <span className="min-w-0 flex-1 truncate text-left">RSVP</span>
-                    </>
+                    <Share2 className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
                   )}
-                  <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 shrink-0 opacity-70 transition-transform ${attendanceMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
-              {attendanceMenuOpen && (
-                <div
-                  role="menu"
-                  className="absolute left-0 bottom-full mb-1 z-[100] min-w-[12.5rem] py-1 rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 shadow-lg"
+              </div>
+              <div className="flex justify-center">
+                <a
+                  href={googleCalendarUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1 sm:p-1.5 rounded text-neutral-500 dark:text-neutral-400 hover:text-primary shrink-0"
+                  aria-label="Add to calendar"
+                  onClick={(e) => e.stopPropagation()}
                 >
+                  <Calendar className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" />
+                </a>
+              </div>
+              <div className="flex justify-center">
+                {canCommentOnInstance ? (
                   <button
                     type="button"
-                    role="menuitem"
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-body text-neutral dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-700/80"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      applyAttendanceChoice('interested');
+                      setCommentsOpen(true);
                     }}
+                    className="p-1 sm:p-1.5 rounded text-neutral-500 dark:text-neutral-400 hover:text-primary shrink-0 inline-flex items-center justify-center gap-0.5 sm:gap-1 tabular-nums"
+                    aria-label={
+                      commentCount != null && commentCount > 0
+                        ? `View ${commentCount} comments`
+                        : 'View comments'
+                    }
                   >
-                    <Star className={`w-4 h-4 shrink-0 ${interestedActive && !goingActive ? 'text-amber-600' : 'text-neutral-400'}`} />
-                    Interested
-                    {interestedActive && !goingActive && <Check className="w-4 h-4 ml-auto text-primary shrink-0" aria-hidden />}
+                    <MessageCircle className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" />
+                    {commentCount != null && commentCount > 0 ? (
+                      <span className="text-[11px] sm:text-xs font-bold leading-none">{commentCount}</span>
+                    ) : null}
                   </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-body text-neutral dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-700/80"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      applyAttendanceChoice('going');
-                    }}
-                  >
-                    <CheckCircle2 className={`w-4 h-4 shrink-0 ${goingActive ? 'text-emerald-600' : 'text-neutral-400'}`} />
-                    Going
-                    {goingActive && <Check className="w-4 h-4 ml-auto text-primary shrink-0" aria-hidden />}
-                  </button>
-                  {hasAttendance && (
-                    <>
-                      <div className="my-1 border-t border-neutral-200 dark:border-neutral-600" />
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-body text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          applyAttendanceChoice('clear');
-                        }}
-                      >
-                        <X className="w-4 h-4 shrink-0" />
-                        Remove attendance
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
+                ) : null}
+              </div>
             </div>
-            <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0">
-              <a
-                href={mapsQueryUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-0.5 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 rounded-full font-body text-[11px] sm:text-sm font-semibold bg-neutral-900 dark:bg-neutral-700 text-white hover:bg-neutral-800 dark:hover:bg-neutral-600 whitespace-nowrap"
-                aria-label="Open location in maps"
+            <div className="w-1/2 flex justify-start pl-1">
+              <div
+                className="relative min-w-0 shrink"
+                ref={attendanceMenuRef}
               >
-                <MapPin className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" />
-                Navigate
-              </a>
-              {canCommentOnInstance && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCommentsOpen(true);
-                  }}
-                  className="inline-flex items-center justify-center gap-0.5 sm:gap-1 min-w-[2.25rem] sm:min-w-[2.75rem] px-1.5 sm:px-2.5 py-1.5 sm:py-2.5 rounded-full font-body text-xs sm:text-sm font-semibold border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 shrink-0 tabular-nums"
-                  aria-label={
-                    commentCount != null && commentCount > 0
-                      ? `View ${commentCount} comments`
-                      : 'View comments'
-                  }
-                >
-                  <MessageCircle className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" />
-                  {commentCount != null && commentCount > 0 ? (
-                    <span className="text-[11px] sm:text-xs font-bold leading-none">{commentCount}</span>
-                  ) : null}
-                </button>
-              )}
-              {item.venueId && (
-                <Link
-                  href={returnTo ? `/venues/${item.venueId}?returnTo=${encodeURIComponent(returnTo)}` : `/venues/${item.venueId}`}
-                  className="inline-flex items-center gap-0.5 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 rounded-full font-body text-[11px] sm:text-sm font-semibold bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 whitespace-nowrap"
-                >
-                  <span className="sm:hidden">Venue</span>
-                  <span className="hidden sm:inline">View venue</span>
-                </Link>
-              )}
+                  <button
+                    type="button"
+                    disabled={attendanceBusy}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setAttendanceMenuOpen((o) => !o);
+                    }}
+                    className={`inline-flex min-w-0 items-center gap-0.5 sm:gap-1 px-1.5 py-1.5 sm:px-2.5 sm:py-2 rounded-full font-body text-xs sm:text-sm font-semibold border transition-colors disabled:opacity-50 ${
+                      goingActive
+                        ? 'border-emerald-600/70 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200'
+                        : interestedActive
+                          ? 'border-amber-500/70 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100'
+                          : 'border-primary bg-primary text-on-primary hover:bg-primary-dark'
+                    }`}
+                    aria-expanded={attendanceMenuOpen}
+                    aria-haspopup="menu"
+                    title={
+                      goingActive ? 'Going' : interestedActive ? 'Interested' : 'Set attendance'
+                    }
+                  >
+                    {goingActive ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-left">Going</span>
+                      </>
+                    ) : interestedActive ? (
+                      <>
+                        <Star className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-left">Interested</span>
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" aria-hidden />
+                        <span className="min-w-0 text-left">Attendance</span>
+                      </>
+                    )}
+                    <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 shrink-0 opacity-70 transition-transform ${attendanceMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                {attendanceMenuOpen && (
+                  <div
+                    role="menu"
+                    className="absolute left-0 bottom-full mb-1 z-[100] min-w-[12.5rem] py-1 rounded-xl border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 shadow-lg"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-body text-neutral dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-700/80"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        applyAttendanceChoice('interested');
+                      }}
+                    >
+                      <Star className={`w-4 h-4 shrink-0 ${interestedActive && !goingActive ? 'text-amber-600' : 'text-neutral-400'}`} />
+                      Interested
+                      {interestedActive && !goingActive && <Check className="w-4 h-4 ml-auto text-primary shrink-0" aria-hidden />}
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-body text-neutral dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-700/80"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        applyAttendanceChoice('going');
+                      }}
+                    >
+                      <CheckCircle2 className={`w-4 h-4 shrink-0 ${goingActive ? 'text-emerald-600' : 'text-neutral-400'}`} />
+                      Going
+                      {goingActive && <Check className="w-4 h-4 ml-auto text-primary shrink-0" aria-hidden />}
+                    </button>
+                    {hasAttendance && (
+                      <>
+                        <div className="my-1 border-t border-neutral-200 dark:border-neutral-600" />
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-body text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            applyAttendanceChoice('clear');
+                          }}
+                        >
+                          <X className="w-4 h-4 shrink-0" />
+                          Remove attendance
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ) : (
-          <div className="flex w-full min-w-0 flex-nowrap items-center gap-x-1 sm:gap-x-1.5 justify-start pb-0.5 sm:pb-0">
-            <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+          <div className="grid w-full min-w-0 grid-cols-4 items-center pb-0.5 sm:pb-0">
+            <div className="flex justify-center">
               <button
                 type="button"
                 onClick={() => onSave?.(item)}
@@ -563,6 +597,8 @@ export function EventCard({
               >
                 <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
+            </div>
+            <div className="flex justify-center">
               <button
                 type="button"
                 onClick={handleShareClick}
@@ -576,18 +612,20 @@ export function EventCard({
                 )}
               </button>
             </div>
-            <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0 min-w-0">
+            <div className="flex justify-center">
               <a
-                href={mapsQueryUrl}
+                href={googleCalendarUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-0.5 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 rounded-full font-body text-[11px] sm:text-sm font-semibold bg-neutral-900 dark:bg-neutral-700 text-white hover:bg-neutral-800 dark:hover:bg-neutral-600 whitespace-nowrap"
-                aria-label="Open location in maps"
+                className="p-1 sm:p-1.5 rounded text-neutral-500 dark:text-neutral-400 hover:text-primary shrink-0"
+                aria-label="Add to calendar"
+                onClick={(e) => e.stopPropagation()}
               >
-                <MapPin className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" />
-                Navigate
+                <Calendar className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" />
               </a>
-              {canCommentOnInstance && (
+            </div>
+            <div className="flex justify-center min-w-0">
+              {canCommentOnInstance ? (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -595,7 +633,7 @@ export function EventCard({
                     e.stopPropagation();
                     setCommentsOpen(true);
                   }}
-                  className="inline-flex items-center justify-center gap-0.5 sm:gap-1 min-w-[2.25rem] sm:min-w-[2.75rem] px-1.5 sm:px-2.5 py-1.5 sm:py-2.5 rounded-full font-body text-xs sm:text-sm font-semibold border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 shrink-0 tabular-nums"
+                  className="p-1 sm:p-1.5 rounded text-neutral-500 dark:text-neutral-400 hover:text-primary shrink-0 inline-flex items-center justify-center gap-0.5 sm:gap-1 tabular-nums"
                   aria-label={
                     commentCount != null && commentCount > 0
                       ? `View ${commentCount} comments`
@@ -607,15 +645,8 @@ export function EventCard({
                     <span className="text-[11px] sm:text-xs font-bold leading-none">{commentCount}</span>
                   ) : null}
                 </button>
-              )}
-              {item.venueId && (
-                <Link
-                  href={returnTo ? `/venues/${item.venueId}?returnTo=${encodeURIComponent(returnTo)}` : `/venues/${item.venueId}`}
-                  className="inline-flex items-center gap-0.5 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 rounded-full font-body text-[11px] sm:text-sm font-semibold bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 whitespace-nowrap"
-                >
-                  <span className="sm:hidden">Venue</span>
-                  <span className="hidden sm:inline">View venue</span>
-                </Link>
+              ) : (
+                <span />
               )}
             </div>
           </div>

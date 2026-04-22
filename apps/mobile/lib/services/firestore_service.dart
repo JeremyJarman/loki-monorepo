@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/user_model.dart';
 import '../models/venue_model.dart';
@@ -14,6 +15,7 @@ import 'cache_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final CacheService _cache = CacheService();
 
   // Users Collection
@@ -55,6 +57,13 @@ class FirestoreService {
   }
 
   Future<void> updateUser(String uid, Map<String, dynamic> data) async {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) {
+      throw Exception('Must be signed in to update profile');
+    }
+    if (currentUserId != uid) {
+      throw Exception('You can only update your own profile');
+    }
     await _firestore.collection('users').doc(uid).update(data);
   }
 
@@ -323,18 +332,50 @@ class FirestoreService {
   }
 
   Future<void> updateList(String listId, Map<String, dynamic> data) async {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) {
+      throw Exception('Must be signed in to update list');
+    }
+    final listDoc = await _firestore.collection('lists').doc(listId).get();
+    if (!listDoc.exists) {
+      throw Exception('List not found');
+    }
+    final ownerId = (listDoc.data()?['userId'] as String?) ?? '';
+    if (ownerId != currentUserId) {
+      throw Exception('Only the list owner can update this list');
+    }
     await _firestore.collection('lists').doc(listId).update(data);
   }
 
   Future<void> deleteList(String listId) async {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) {
+      throw Exception('Must be signed in to delete list');
+    }
+    final listDoc = await _firestore.collection('lists').doc(listId).get();
+    if (!listDoc.exists) {
+      throw Exception('List not found');
+    }
+    final ownerId = (listDoc.data()?['userId'] as String?) ?? '';
+    if (ownerId != currentUserId) {
+      throw Exception('Only the list owner can delete this list');
+    }
     await _firestore.collection('lists').doc(listId).delete();
   }
 
   Future<void> removeVenueFromList(String listId, String venueId) async {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) {
+      throw Exception('Must be signed in to modify list');
+    }
     final listDoc = await _firestore.collection('lists').doc(listId).get();
     if (!listDoc.exists) return;
     
     final data = listDoc.data() as Map<String, dynamic>;
+    final ownerId = (data['userId'] as String?) ?? '';
+    if (ownerId != currentUserId) {
+      throw Exception('Only the list owner can modify this list');
+    }
     final venueIds = List<String>.from(data['venueIds'] ?? []);
     
     if (venueIds.contains(venueId)) {
@@ -383,35 +424,22 @@ class FirestoreService {
 
   // Follows Collection
   Future<void> followUser(String followerId, String followingId) async {
-    final batch = _firestore.batch();
+    final alreadyFollowing = await _firestore
+        .collection('follows')
+        .where('followerId', isEqualTo: followerId)
+        .where('followingId', isEqualTo: followingId)
+        .limit(1)
+        .get();
+    if (alreadyFollowing.docs.isNotEmpty) return;
 
-    // Add follow relationship
-    final followRef = _firestore.collection('follows').doc();
-    batch.set(followRef, {
+    await _firestore.collection('follows').add({
       'followerId': followerId,
       'followingId': followingId,
       'timestamp': FieldValue.serverTimestamp(),
     });
-
-    // Update follower count
-    final followingUserRef = _firestore.collection('users').doc(followingId);
-    batch.update(followingUserRef, {
-      'followersCount': FieldValue.increment(1),
-    });
-
-    // Update following count
-    final followerUserRef = _firestore.collection('users').doc(followerId);
-    batch.update(followerUserRef, {
-      'followingCount': FieldValue.increment(1),
-    });
-
-    await batch.commit();
   }
 
   Future<void> unfollowUser(String followerId, String followingId) async {
-    final batch = _firestore.batch();
-
-    // Remove follow relationship
     final followsQuery = await _firestore
         .collection('follows')
         .where('followerId', isEqualTo: followerId)
@@ -419,22 +447,8 @@ class FirestoreService {
         .get();
 
     for (var doc in followsQuery.docs) {
-      batch.delete(doc.reference);
+      await doc.reference.delete();
     }
-
-    // Update follower count
-    final followingUserRef = _firestore.collection('users').doc(followingId);
-    batch.update(followingUserRef, {
-      'followersCount': FieldValue.increment(-1),
-    });
-
-    // Update following count
-    final followerUserRef = _firestore.collection('users').doc(followerId);
-    batch.update(followerUserRef, {
-      'followingCount': FieldValue.increment(-1),
-    });
-
-    await batch.commit();
   }
 
   Future<bool> isFollowing(String followerId, String followingId) async {
@@ -456,31 +470,40 @@ class FirestoreService {
             snapshot.docs.map((doc) => doc.data()['followingId'] as String).toList());
   }
 
+  Stream<int> getFollowersCountStream(String userId) {
+    return _firestore
+        .collection('follows')
+        .where('followingId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) => snapshot.size);
+  }
+
+  Stream<int> getFollowingCountStream(String userId) {
+    return _firestore
+        .collection('follows')
+        .where('followerId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) => snapshot.size);
+  }
+
   // Venue Follows Collection
   Future<void> followVenue(String userId, String venueId) async {
-    final batch = _firestore.batch();
+    final existing = await _firestore
+        .collection('venueFollows')
+        .where('userId', isEqualTo: userId)
+        .where('venueId', isEqualTo: venueId)
+        .limit(1)
+        .get();
+    if (existing.docs.isNotEmpty) return;
 
-    // Add follow relationship in venueFollows collection
-    final followRef = _firestore.collection('venueFollows').doc();
-    batch.set(followRef, {
+    await _firestore.collection('venueFollows').add({
       'userId': userId,
       'venueId': venueId,
       'timestamp': FieldValue.serverTimestamp(),
     });
-
-    // Update venue follower count
-    final venueRef = _firestore.collection('venues').doc(venueId);
-    batch.update(venueRef, {
-      'followersCount': FieldValue.increment(1),
-    });
-
-    await batch.commit();
   }
 
   Future<void> unfollowVenue(String userId, String venueId) async {
-    final batch = _firestore.batch();
-
-    // Remove follow relationship
     final followsQuery = await _firestore
         .collection('venueFollows')
         .where('userId', isEqualTo: userId)
@@ -488,16 +511,8 @@ class FirestoreService {
         .get();
 
     for (var doc in followsQuery.docs) {
-      batch.delete(doc.reference);
+      await doc.reference.delete();
     }
-
-    // Update venue follower count
-    final venueRef = _firestore.collection('venues').doc(venueId);
-    batch.update(venueRef, {
-      'followersCount': FieldValue.increment(-1),
-    });
-
-    await batch.commit();
   }
 
   Future<bool> isFollowingVenue(String userId, String venueId) async {
@@ -512,13 +527,10 @@ class FirestoreService {
 
   Stream<int> getVenueFollowersCount(String venueId) {
     return _firestore
-        .collection('venues')
-        .doc(venueId)
+        .collection('venueFollows')
+        .where('venueId', isEqualTo: venueId)
         .snapshots()
-        .map((snapshot) {
-      final data = snapshot.data();
-      return data?['followersCount'] as int? ?? 0;
-    });
+        .map((snapshot) => snapshot.size);
   }
 
   // ============================================
@@ -825,6 +837,88 @@ class FirestoreService {
       return ExperienceInstanceModel.fromFirestore(doc);
     }
     return null;
+  }
+
+  Stream<List<Map<String, dynamic>>> getEventCommentsStream(String instanceId) {
+    return _firestore
+        .collection('experienceInstances')
+        .doc(instanceId)
+        .collection('comments')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              return {
+                'id': doc.id,
+                'text': data['text'] as String? ?? '',
+                'createdAt': data['createdAt'] as Timestamp?,
+                'author': data['author'] as Map<String, dynamic>? ?? <String, dynamic>{},
+              };
+            }).toList());
+  }
+
+  Stream<int> getEventCommentCountStream(String instanceId) {
+    return _firestore
+        .collection('experienceInstances')
+        .doc(instanceId)
+        .collection('comments')
+        .snapshots()
+        .map((snapshot) => snapshot.size);
+  }
+
+  Future<void> addEventComment(String instanceId, String text) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('Must be signed in to comment');
+    }
+    final cleanText = text.trim();
+    if (cleanText.isEmpty) {
+      throw Exception('Comment cannot be empty');
+    }
+
+    final profileDoc = await _firestore.collection('users').doc(currentUser.uid).get();
+    final profileData = profileDoc.data();
+    final displayName =
+        (profileData?['username'] as String?)?.trim().isNotEmpty == true
+            ? (profileData?['username'] as String).trim()
+            : (currentUser.displayName?.trim().isNotEmpty == true
+                ? currentUser.displayName!.trim()
+                : 'User');
+
+    await _firestore
+        .collection('experienceInstances')
+        .doc(instanceId)
+        .collection('comments')
+        .add({
+      'text': cleanText,
+      'createdAt': FieldValue.serverTimestamp(),
+      'author': {
+        'userId': currentUser.uid,
+        'displayName': displayName,
+        'profileImageUrl': profileData?['profileImageUrl'],
+      },
+    });
+  }
+
+  Future<void> deleteEventComment(String instanceId, String commentId) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('Must be signed in');
+    }
+    final commentRef = _firestore
+        .collection('experienceInstances')
+        .doc(instanceId)
+        .collection('comments')
+        .doc(commentId);
+    final commentSnap = await commentRef.get();
+    if (!commentSnap.exists) return;
+    final data = commentSnap.data() as Map<String, dynamic>;
+    final author = data['author'] as Map<String, dynamic>?;
+    final authorUserId = author?['userId'] as String?;
+    if (authorUserId != currentUser.uid) {
+      throw Exception('You can only delete your own comments');
+    }
+    await commentRef.delete();
   }
 
   /// Get all upcoming and live experience instances across all venues (for home feed)

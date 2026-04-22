@@ -5,7 +5,9 @@ service cloud.firestore {
     match /handles/{handleId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow update: if request.auth != null;
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid;
       allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
 
@@ -19,7 +21,12 @@ service cloud.firestore {
 
     // Users: any signed-in user can read any user doc (for profiles, suggested users)
     match /users/{userId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update, delete: if request.auth != null && request.auth.uid == userId;
+      match /venuePreferences/{venueId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
       match /saved_lists/{listId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
@@ -44,24 +51,42 @@ service cloud.firestore {
 
     // Lists: any signed-in user can read/write (for profile lists, collaboration)
     match /lists/{listId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
       match /items/{itemId} {
-        allow read, write: if request.auth != null;
+        allow read: if request.auth != null;
+        allow write: if request.auth != null
+          && get(/databases/$(database)/documents/lists/$(listId)).data.userId == request.auth.uid;
         match /reactions/{reactionId} {
-          allow read, write: if request.auth != null;
+          allow read: if request.auth != null;
+          allow write: if request.auth != null;
         }
         match /event_rsvp/{userId} {
-          allow read, write: if request.auth != null;
+          allow read: if request.auth != null;
+          allow create, update, delete: if request.auth != null && request.auth.uid == userId;
         }
         match /comments/{commentId} {
-          allow read, write: if request.auth != null;
+          allow read: if request.auth != null;
+          allow create: if request.auth != null
+            && request.resource.data.author.userId == request.auth.uid;
+          allow delete: if request.auth != null
+            && (
+              resource.data.author.userId == request.auth.uid
+              || get(/databases/$(database)/documents/lists/$(listId)).data.userId == request.auth.uid
+            );
+          allow update: if false;
         }
       }
       match /activity/{activityId} {
-        allow read, write: if request.auth != null;
+        allow read: if request.auth != null;
+        allow write: if request.auth != null
+          && get(/databases/$(database)/documents/lists/$(listId)).data.userId == request.auth.uid;
       }
       match /collaborators/{collaboratorId} {
-        allow read, write: if request.auth != null;
+        allow read: if request.auth != null;
+        allow write: if request.auth != null
+          && get(/databases/$(database)/documents/lists/$(listId)).data.userId == request.auth.uid;
       }
     }
 
@@ -140,12 +165,33 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // DEVELOPMENT RULES - Allows all access
-    // ⚠️ WARNING: These rules allow anyone to read/write your database
-    // Only use for development/testing!
-    
-    match /{document=**} {
-      allow read, write: if true;
+    // Social follows collections used by mobile app
+    match /follows/{followId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['followerId', 'followingId', 'timestamp'])
+        && request.resource.data.followerId == request.auth.uid
+        && request.resource.data.followingId is string;
+      allow delete: if request.auth != null
+        && resource.data.followerId == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /venueFollows/{followId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['userId', 'venueId', 'timestamp'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.venueId is string;
+      allow delete: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+      allow update: if false;
+    }
+
+    // Legacy events collection support used by older mobile flows
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }
